@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { BedDouble, Building, LayoutGrid, Users, Wallet } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -13,6 +13,35 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: '/dashboard',
         icon: LayoutGrid,
+    },
+];
+
+const masterNavItems: NavItem[] = [
+    {
+        title: 'Kost',
+        href: '/master/kosts',
+        icon: Building,
+    },
+    {
+        title: 'Room',
+        href: '/master/rooms',
+        icon: BedDouble,
+    },
+];
+
+const managementNavItems: NavItem[] = [
+    {
+        title: 'Tenants',
+        href: '/management/tenants',
+        icon: Users,
+    },
+];
+
+const transactionNavItems: NavItem[] = [
+    {
+        title: 'Transactions',
+        href: '/transactions',
+        icon: Wallet,
     },
 ];
 </script>
@@ -33,6 +62,9 @@ const mainNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavMain :items="masterNavItems" label="Master Data" />
+            <NavMain :items="managementNavItems" label="Management" />
+            <NavMain :items="transactionNavItems" label="Transactions" />
         </SidebarContent>
 
         <SidebarFooter>
