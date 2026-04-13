@@ -27,30 +27,14 @@ class RoomPricing extends Model
     public function getFinalPrice(): array
     {
         $originalPrice = (float) $this->price;
-        $finalPrice = $originalPrice;
-        $appliedPromo = null;
-        $bonusDays = 0;
-        $cashback = 0.0;
-
         $promo = $this->promos()->latest()->first();
-
-        if ($promo) {
-            $appliedPromo = $promo->type;
-
-            match ($promo->type) {
-                'discount_percent' => $finalPrice = $originalPrice * (1 - $promo->discount_amount / 100),
-                'discount_amount'  => $finalPrice = max(0, $originalPrice - (float) $promo->discount_amount),
-                'bonus_days'       => $bonusDays = (int) $promo->bonus_days,
-                'cashback'         => $cashback = (float) $promo->discount_amount,
-            };
-        }
 
         return [
             'original_price' => round($originalPrice, 2),
-            'final_price'    => round($finalPrice, 2),
-            'applied_promo'  => $appliedPromo,
-            'bonus_days'     => $bonusDays,
-            'cashback'       => $cashback,
+            'final_price'    => round($originalPrice, 2),
+            'applied_promo'  => $promo?->type,
+            'bonus_days'     => 0,
+            'cashback'       => 0.0,
         ];
     }
 }
