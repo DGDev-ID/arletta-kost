@@ -10,15 +10,11 @@ class RoomPricingPromo extends Model
     protected $fillable = [
         'room_pricing_id',
         'type',
-        'discount_amount',
-        'bonus_days',
     ];
 
     protected function casts(): array
     {
-        return [
-            'discount_amount' => 'decimal:2',
-        ];
+        return [];
     }
 
     public function roomPricing(): BelongsTo

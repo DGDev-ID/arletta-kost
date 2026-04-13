@@ -12,8 +12,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('room_pricing_id')->constrained('room_pricings')->cascadeOnDelete();
             $table->enum('type', ['discount_percent', 'discount_amount', 'bonus_days', 'cashback']);
-            $table->decimal('discount_amount', 15, 2)->nullable();
-            $table->integer('bonus_days')->nullable();
             $table->timestamps();
         });
     }
