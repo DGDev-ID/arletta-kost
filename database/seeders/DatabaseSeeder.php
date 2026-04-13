@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             BillSeeder::class,
             TransactionSeeder::class,
             MidtransConfigSeeder::class,
+            RoomPricingPromoSeeder::class,
         ]);
     }
 }
