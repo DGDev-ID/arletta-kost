@@ -15,7 +15,7 @@ class TenantSeeder extends Seeder
         $occupiedRooms = Room::where('status', 'occupied')->get();
 
         foreach ($occupiedRooms as $room) {
-            Tenant::create([
+            $tenant = Tenant::create([
                 'room_id' => $room->id,
                 'email' => $faker->unique()->safeEmail(),
                 'name' => $faker->name(),
@@ -27,6 +27,9 @@ class TenantSeeder extends Seeder
                 'address' => $faker->address(),
                 'phone_number' => $faker->phoneNumber(),
             ]);
+
+            // Also attach via pivot table
+            $tenant->rooms()->attach($room->id);
         }
     }
 }

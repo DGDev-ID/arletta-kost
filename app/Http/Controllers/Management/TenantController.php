@@ -16,12 +16,12 @@ class TenantController extends Controller
     {
         $search = $request->input('search', '');
 
-        $tenants = Tenant::with(['room.roomCategory.kost', 'bills'])
+        $tenants = Tenant::with(['rooms.roomCategory.kost', 'bills'])
             ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
                 $q2->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('phone_number', 'like', "%{$search}%")
-                    ->orWhereHas('room', fn ($q3) => $q3->where('room_number', 'like', "%{$search}%"));
+                    ->orWhereHas('rooms', fn ($q3) => $q3->where('room_number', 'like', "%{$search}%"));
             }))
             ->latest()
             ->paginate(15)
@@ -31,9 +31,10 @@ class TenantController extends Controller
                 'email' => $tenant->email,
                 'phone_number' => $tenant->phone_number,
                 'gender' => $tenant->gender,
-                'room_number' => $tenant->room->room_number,
-                'kost_name' => $tenant->room->roomCategory->kost->name,
-                'room_id' => $tenant->room_id,
+                'rooms' => $tenant->rooms->map(fn ($room) => [
+                    'room_number' => $room->room_number,
+                    'kost_name' => $room->roomCategory->kost->name,
+                ])->toArray(),
                 'bills_count' => $tenant->bills->count(),
                 'unpaid_bills' => $tenant->bills->where('status', 'unpaid')->count(),
             ]);
@@ -63,7 +64,8 @@ class TenantController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'room_id' => 'required|exists:rooms,id',
+            'room_ids' => 'required|array|min:1',
+            'room_ids.*' => 'exists:rooms,id',
             'email' => 'required|email|max:255',
             'name' => 'required|string|max:255',
             'nik' => 'nullable|string|max:50',
@@ -75,17 +77,31 @@ class TenantController extends Controller
             'phone_number' => 'required|string|max:20',
         ]);
 
-        Tenant::create($validated);
+        $tenant = Tenant::create([
+            'room_id' => $validated['room_ids'][0] ?? null,
+            'email' => $validated['email'],
+            'name' => $validated['name'],
+            'nik' => $validated['nik'] ?? null,
+            'ktp_number' => $validated['ktp_number'] ?? null,
+            'birth_place' => $validated['birth_place'] ?? null,
+            'birth_date' => $validated['birth_date'] ?? null,
+            'gender' => $validated['gender'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'phone_number' => $validated['phone_number'],
+        ]);
 
-        // Mark room as occupied
-        Room::where('id', $validated['room_id'])->update(['status' => 'occupied']);
+        // Attach rooms via pivot
+        $tenant->rooms()->sync($validated['room_ids']);
+
+        // Mark rooms as occupied
+        Room::whereIn('id', $validated['room_ids'])->update(['status' => 'occupied']);
 
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil ditambahkan.');
     }
 
     public function show(Tenant $tenant): Response
     {
-        $tenant->load(['room.roomCategory.kost', 'bills']);
+        $tenant->load(['rooms.roomCategory.kost', 'bills.transactions']);
 
         $tenantData = [
             'id' => $tenant->id,
@@ -98,13 +114,18 @@ class TenantController extends Controller
             'birth_date' => $tenant->birth_date?->format('Y-m-d'),
             'gender' => $tenant->gender,
             'address' => $tenant->address,
-            'room_id' => $tenant->room_id,
-            'room_number' => $tenant->room->room_number,
-            'kost_name' => $tenant->room->roomCategory->kost->name,
-            'category_name' => $tenant->room->roomCategory->name,
+            'rooms' => $tenant->rooms->map(fn ($room) => [
+                'id' => $room->id,
+                'room_number' => $room->room_number,
+                'kost_name' => $room->roomCategory->kost->name,
+                'category_name' => $room->roomCategory->name,
+                'status' => $room->status,
+            ])->toArray(),
         ];
 
+        // Bills: only unpaid/pending + manual payment_type
         $bills = $tenant->bills()
+            ->with(['transactions'])
             ->latest()
             ->get()
             ->map(fn ($bill) => [
@@ -113,29 +134,46 @@ class TenantController extends Controller
                 'start_date' => $bill->start_date->format('Y-m-d'),
                 'due_date' => $bill->due_date->format('Y-m-d'),
                 'status' => $bill->status,
+                'room_id' => $bill->room_id,
+                'transactions' => $bill->transactions->map(fn ($t) => [
+                    'id' => $t->id,
+                    'order_id' => $t->order_id,
+                    'payment_type' => $t->payment_type,
+                    'status' => $t->status,
+                    'total_price' => (float) $t->total_price,
+                ])->toArray(),
             ]);
 
-        $pricings = $tenant->room->roomCategory->pricings()
-            ->get()
-            ->map(fn ($p) => [
-                'id' => $p->id,
-                'duration_days' => $p->duration_days,
-                'price' => (float) $p->price,
-            ]);
+        // Get pricings from all rooms' categories
+        $pricings = collect();
+        foreach ($tenant->rooms as $room) {
+            $roomPricings = $room->roomCategory->pricings()
+                ->get()
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'duration_days' => $p->duration_days,
+                    'price' => (float) $p->price,
+                    'room_id' => $room->id,
+                    'room_number' => $room->room_number,
+                ]);
+            $pricings = $pricings->merge($roomPricings);
+        }
 
         return Inertia::render('Management/Tenants/Show', [
             'tenant' => $tenantData,
             'bills' => $bills,
-            'pricings' => $pricings,
+            'pricings' => $pricings->values(),
         ]);
     }
 
     public function edit(Tenant $tenant): Response
     {
+        $tenant->load('rooms');
+
         $rooms = Room::with('roomCategory.kost')
             ->where(function ($q) use ($tenant) {
                 $q->where('status', 'available')
-                    ->orWhere('id', $tenant->room_id);
+                    ->orWhereIn('id', $tenant->rooms->pluck('id'));
             })
             ->get()
             ->map(fn (Room $room) => [
@@ -145,7 +183,10 @@ class TenantController extends Controller
             ]);
 
         return Inertia::render('Management/Tenants/Form', [
-            'tenant' => $tenant->only('id', 'room_id', 'email', 'name', 'nik', 'ktp_number', 'birth_place', 'birth_date', 'gender', 'address', 'phone_number'),
+            'tenant' => [
+                ...$tenant->only('id', 'email', 'name', 'nik', 'ktp_number', 'birth_place', 'birth_date', 'gender', 'address', 'phone_number'),
+                'room_ids' => $tenant->rooms->pluck('id')->toArray(),
+            ],
             'rooms' => $rooms,
         ]);
     }
@@ -153,7 +194,8 @@ class TenantController extends Controller
     public function update(Request $request, Tenant $tenant): RedirectResponse
     {
         $validated = $request->validate([
-            'room_id' => 'required|exists:rooms,id',
+            'room_ids' => 'required|array|min:1',
+            'room_ids.*' => 'exists:rooms,id',
             'email' => 'required|email|max:255',
             'name' => 'required|string|max:255',
             'nik' => 'nullable|string|max:50',
@@ -165,13 +207,34 @@ class TenantController extends Controller
             'phone_number' => 'required|string|max:20',
         ]);
 
-        $oldRoomId = $tenant->room_id;
-        $tenant->update($validated);
+        $oldRoomIds = $tenant->rooms->pluck('id')->toArray();
+        $newRoomIds = $validated['room_ids'];
 
-        // Handle room status changes
-        if ($oldRoomId !== (int) $validated['room_id']) {
-            Room::where('id', $oldRoomId)->update(['status' => 'available']);
-            Room::where('id', $validated['room_id'])->update(['status' => 'occupied']);
+        $tenant->update([
+            'room_id' => $newRoomIds[0] ?? null,
+            'email' => $validated['email'],
+            'name' => $validated['name'],
+            'nik' => $validated['nik'] ?? null,
+            'ktp_number' => $validated['ktp_number'] ?? null,
+            'birth_place' => $validated['birth_place'] ?? null,
+            'birth_date' => $validated['birth_date'] ?? null,
+            'gender' => $validated['gender'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'phone_number' => $validated['phone_number'],
+        ]);
+
+        $tenant->rooms()->sync($newRoomIds);
+
+        // Free removed rooms
+        $removedRoomIds = array_diff($oldRoomIds, $newRoomIds);
+        if (! empty($removedRoomIds)) {
+            Room::whereIn('id', $removedRoomIds)->update(['status' => 'available']);
+        }
+
+        // Mark new rooms as occupied
+        $addedRoomIds = array_diff($newRoomIds, $oldRoomIds);
+        if (! empty($addedRoomIds)) {
+            Room::whereIn('id', $addedRoomIds)->update(['status' => 'occupied']);
         }
 
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil diperbarui.');
@@ -179,11 +242,12 @@ class TenantController extends Controller
 
     public function destroy(Tenant $tenant): RedirectResponse
     {
-        $roomId = $tenant->room_id;
+        $roomIds = $tenant->rooms->pluck('id')->toArray();
+        $tenant->rooms()->detach();
         $tenant->delete();
 
-        // Free the room
-        Room::where('id', $roomId)->update(['status' => 'available']);
+        // Free all rooms
+        Room::whereIn('id', $roomIds)->update(['status' => 'available']);
 
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil dihapus.');
     }

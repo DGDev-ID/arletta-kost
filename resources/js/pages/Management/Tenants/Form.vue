@@ -18,7 +18,7 @@ interface RoomOption {
 
 interface TenantData {
     id: number;
-    room_id: number;
+    room_ids: number[];
     email: string;
     name: string;
     nik: string | null;
@@ -44,7 +44,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const form = useForm({
-    room_id: props.tenant?.room_id ?? '',
+    room_ids: props.tenant?.room_ids ?? [] as number[],
     email: props.tenant?.email ?? '',
     name: props.tenant?.name ?? '',
     nik: props.tenant?.nik ?? '',
@@ -55,6 +55,15 @@ const form = useForm({
     address: props.tenant?.address ?? '',
     phone_number: props.tenant?.phone_number ?? '',
 });
+
+const toggleRoom = (roomId: number) => {
+    const idx = form.room_ids.indexOf(roomId);
+    if (idx === -1) {
+        form.room_ids.push(roomId);
+    } else {
+        form.room_ids.splice(idx, 1);
+    }
+};
 
 const submit = () => {
     if (isEdit.value && props.tenant) {
@@ -76,20 +85,27 @@ const submit = () => {
 
             <div class="mx-auto w-full max-w-xl">
                 <form @submit.prevent="submit" class="space-y-6">
-                    <!-- Room -->
+                    <!-- Room (Multiple) -->
                     <div class="grid gap-2">
-                        <Label for="room_id">Room</Label>
-                        <select
-                            id="room_id"
-                            v-model="form.room_id"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        >
-                            <option value="" disabled>Pilih room...</option>
-                            <option v-for="room in rooms" :key="room.id" :value="room.id">
-                                {{ room.kost_name }} — {{ room.room_number }}
-                            </option>
-                        </select>
-                        <InputError :message="form.errors.room_id" />
+                        <Label>Rooms</Label>
+                        <p class="text-xs text-muted-foreground">Pilih satu atau lebih room untuk tenant ini.</p>
+                        <div class="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">
+                            <div v-if="rooms.length === 0" class="text-sm text-muted-foreground">Tidak ada room tersedia.</div>
+                            <label
+                                v-for="room in rooms"
+                                :key="room.id"
+                                class="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50 cursor-pointer"
+                            >
+                                <input
+                                    type="checkbox"
+                                    :checked="form.room_ids.includes(room.id)"
+                                    @change="toggleRoom(room.id)"
+                                    class="h-4 w-4 rounded border-input"
+                                />
+                                <span class="text-sm">{{ room.kost_name }} — {{ room.room_number }}</span>
+                            </label>
+                        </div>
+                        <InputError :message="form.errors.room_ids" />
                     </div>
 
                     <!-- Name -->

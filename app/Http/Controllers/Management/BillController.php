@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
+use App\Models\Transaction;
+use App\Models\TransactionDetail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BillController extends Controller
 {
@@ -35,5 +38,38 @@ class BillController extends Controller
         $bill->update($validated);
 
         return back()->with('success', 'Status bill berhasil diperbarui.');
+    }
+
+    public function makeSuccess(Transaction $transaction): RedirectResponse
+    {
+        DB::transaction(function () use ($transaction) {
+            $transaction->update(['status' => 'success']);
+
+            // Update transaction details
+            $transaction->details()->update(['status' => 'success']);
+
+            // Add a success detail record
+            $transaction->details()->create(['status' => 'success']);
+
+            // Update bill status to paid
+            $transaction->bill->update(['status' => 'paid']);
+        });
+
+        return back()->with('success', 'Transaksi berhasil diupdate menjadi Success.');
+    }
+
+    public function makeFailed(Transaction $transaction): RedirectResponse
+    {
+        DB::transaction(function () use ($transaction) {
+            $transaction->update(['status' => 'failed']);
+
+            // Update transaction details
+            $transaction->details()->update(['status' => 'failed']);
+
+            // Add a failed detail record
+            $transaction->details()->create(['status' => 'failed']);
+        });
+
+        return back()->with('success', 'Transaksi berhasil diupdate menjadi Failed.');
     }
 }

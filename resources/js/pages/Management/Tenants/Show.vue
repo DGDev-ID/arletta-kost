@@ -17,8 +17,16 @@ import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, FileText, LoaderCircle } from 'lucide-vue-next';
+import { ArrowLeft, CheckCircle, FileText, LoaderCircle, XCircle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
+interface RoomInfo {
+    id: number;
+    room_number: string;
+    kost_name: string;
+    category_name: string;
+    status: string;
+}
 
 interface TenantData {
     id: number;
@@ -31,10 +39,15 @@ interface TenantData {
     birth_date: string | null;
     gender: string | null;
     address: string | null;
-    room_id: number;
-    room_number: string;
-    kost_name: string;
-    category_name: string;
+    rooms: RoomInfo[];
+}
+
+interface TransactionItem {
+    id: number;
+    order_id: string;
+    payment_type: string;
+    status: string;
+    total_price: number;
 }
 
 interface BillItem {
@@ -43,12 +56,16 @@ interface BillItem {
     start_date: string;
     due_date: string;
     status: string;
+    room_id: number;
+    transactions: TransactionItem[];
 }
 
 interface PricingItem {
     id: number;
     duration_days: number;
     price: number;
+    room_id: number;
+    room_number: string;
 }
 
 const props = defineProps<{
@@ -68,16 +85,24 @@ const flash = computed(() => {
     return page?.props?.flash as { success?: string; error?: string } | undefined;
 });
 
+const activeTab = ref<'info' | 'rooms' | 'bills'>('info');
+
 // --- Bill Form ---
 const showBillDialog = ref(false);
 
 const billForm = useForm({
     tenant_id: props.tenant.id,
-    room_id: props.tenant.room_id,
+    room_id: '' as number | '',
     pricing_id: '' as number | '',
     total_price: 0,
     start_date: '',
     due_date: '',
+});
+
+// Pricings filtered by selected room
+const filteredPricings = computed(() => {
+    if (!billForm.room_id) return [];
+    return props.pricings.filter(p => p.room_id === billForm.room_id);
 });
 
 const selectedPricing = computed(() => {
@@ -98,13 +123,33 @@ watch(
     },
 );
 
+// Reset pricing when room changes
+watch(() => billForm.room_id, () => {
+    billForm.pricing_id = '';
+    billForm.total_price = 0;
+    billForm.due_date = '';
+});
+
 const submitBill = () => {
     billForm.post(route('management.bills.store'), {
         preserveScroll: true,
         onSuccess: () => {
             showBillDialog.value = false;
-            billForm.reset('pricing_id', 'total_price', 'start_date', 'due_date');
+            billForm.reset('room_id', 'pricing_id', 'total_price', 'start_date', 'due_date');
         },
+    });
+};
+
+// --- Manual payment actions ---
+const makeSuccess = (transactionId: number) => {
+    router.patch(route('management.bills.make-success', transactionId), {}, {
+        preserveScroll: true,
+    });
+};
+
+const makeFailed = (transactionId: number) => {
+    router.patch(route('management.bills.make-failed', transactionId), {}, {
+        preserveScroll: true,
     });
 };
 
@@ -138,9 +183,21 @@ const statusBadge = (status: string) => {
     const map: Record<string, string> = {
         unpaid: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
         refund_request: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
         refund: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    };
+    return map[status] ?? 'bg-gray-100 text-gray-700';
+};
+
+const roomStatusBadge = (status: string) => {
+    const map: Record<string, string> = {
+        available: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        occupied: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        maintenance: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
     };
     return map[status] ?? 'bg-gray-100 text-gray-700';
 };
@@ -153,6 +210,18 @@ const formatDuration = (days: number) => {
     if (days % 30 === 0) return `${days / 30} bulan`;
     return `${days} hari`;
 };
+
+// Filtered bills: show unpaid/pending with manual payment_type
+const manualBills = computed(() => {
+    return props.bills.filter(bill => {
+        const isUnpaidOrPending = bill.status === 'unpaid' || bill.status === 'pending';
+        const hasManualTransaction = bill.transactions.some(t => t.payment_type === 'manual');
+        return isUnpaidOrPending && hasManualTransaction;
+    });
+});
+
+// All bills for the history view
+const allBills = computed(() => props.bills);
 </script>
 
 <template>
@@ -165,7 +234,6 @@ const formatDuration = (days: number) => {
             <!-- Header -->
             <div class="flex flex-col justify-between gap-4">
                 <div class="flex flex-row justify-between item-center">
-
                     <div class="flex items-center gap-3">
                         <Button variant="ghost" size="icon" class="h-8 w-8" as-child>
                             <Link :href="route('management.tenants.index')">
@@ -173,7 +241,7 @@ const formatDuration = (days: number) => {
                             </Link>
                         </Button>
                         <Heading :title="tenant.name"
-                                :description="`${tenant.kost_name} — Kamar ${tenant.room_number}`" />
+                                :description="`${tenant.rooms.map(r => `${r.kost_name} — ${r.room_number}`).join(', ')}`" />
                     </div>
 
                     <div class="flex gap-2">
@@ -199,8 +267,25 @@ const formatDuration = (days: number) => {
                 {{ flash.success }}
             </div>
 
-            <!-- Tenant Info -->
-            <div class="rounded-lg border p-4">
+            <!-- Tabs -->
+            <div class="flex gap-1 border-b">
+                <button
+                    v-for="tab in (['info', 'rooms', 'bills'] as const)"
+                    :key="tab"
+                    @click="activeTab = tab"
+                    :class="[
+                        'px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize',
+                        activeTab === tab
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                    ]"
+                >
+                    {{ tab }}
+                </button>
+            </div>
+
+            <!-- Tab: Info -->
+            <div v-if="activeTab === 'info'" class="rounded-lg border p-4 space-y-4">
                 <HeadingSmall title="Info Tenant" description="Data pribadi tenant" />
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
@@ -232,61 +317,117 @@ const formatDuration = (days: number) => {
                         <p class="text-sm font-medium">{{ tenant.address ?? '-' }}</p>
                     </div>
                 </div>
+            </div>
 
-                <Separator class="my-4" />
-
-                <HeadingSmall title="Info Room" />
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div>
-                        <p class="text-xs text-muted-foreground">Kost</p>
-                        <p class="text-sm font-medium">{{ tenant.kost_name }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-muted-foreground">Kategori</p>
-                        <p class="text-sm font-medium">{{ tenant.category_name }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-muted-foreground">No. Kamar</p>
-                        <p class="text-sm font-medium">{{ tenant.room_number }}</p>
+            <!-- Tab: Rooms -->
+            <div v-if="activeTab === 'rooms'" class="space-y-4">
+                <HeadingSmall title="Rooms" :description="`${tenant.rooms.length} room(s) ditempati`" />
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div v-for="room in tenant.rooms" :key="room.id" class="rounded-lg border p-4 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-semibold">{{ room.room_number }}</p>
+                            <span :class="roomStatusBadge(room.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                {{ room.status }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-muted-foreground">{{ room.kost_name }}</p>
+                        <p class="text-xs text-muted-foreground">Kategori: {{ room.category_name }}</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Bills Table -->
-            <div>
-                <HeadingSmall title="Riwayat Tagihan" :description="`${bills.length} tagihan`" />
-                <div class="overflow-hidden rounded-lg border">
-                    <table class="w-full text-sm">
-                        <thead class="border-b bg-muted/50">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-medium">#</th>
-                                <th class="px-4 py-3 text-left font-medium">Total</th>
-                                <th class="px-4 py-3 text-left font-medium">Mulai</th>
-                                <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
-                                <th class="px-4 py-3 text-left font-medium">Status</th>
-                                <th class="px-4 py-3 text-right font-medium">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-if="bills.length === 0">
-                                <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada bill.</td>
-                            </tr>
-                            <tr v-for="(bill, idx) in bills" :key="bill.id" class="border-b last:border-0">
-                                <td class="px-4 py-3 font-medium">{{ idx + 1 }}</td>
-                                <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
-                                <td class="px-4 py-3">{{ bill.start_date }}</td>
-                                <td class="px-4 py-3">{{ bill.due_date }}</td>
-                                <td class="px-4 py-3">
-                                    <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                        {{ bill.status }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <Button variant="ghost" size="sm" class="h-7 text-xs" @click="openStatusDialog(bill)"> Ubah Status </Button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- Tab: Bills -->
+            <div v-if="activeTab === 'bills'" class="space-y-6">
+                <!-- Manual Bills (unpaid/pending) -->
+                <div v-if="manualBills.length > 0">
+                    <HeadingSmall title="Bills Menunggu Konfirmasi (Manual)" :description="`${manualBills.length} bill(s) perlu tindakan`" />
+                    <div class="overflow-hidden rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="border-b bg-muted/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-medium">Total</th>
+                                    <th class="px-4 py-3 text-left font-medium">Mulai</th>
+                                    <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 text-left font-medium">Status</th>
+                                    <th class="px-4 py-3 text-left font-medium">Transaction</th>
+                                    <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="bill in manualBills" :key="bill.id" class="border-b last:border-0">
+                                    <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
+                                    <td class="px-4 py-3">{{ bill.start_date }}</td>
+                                    <td class="px-4 py-3">{{ bill.due_date }}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                            {{ bill.status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div v-for="t in bill.transactions.filter(t => t.payment_type === 'manual')" :key="t.id" class="text-xs">
+                                            <span :class="statusBadge(t.status)" class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize">
+                                                {{ t.status }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <template v-for="t in bill.transactions.filter(t => t.payment_type === 'manual' && t.status === 'pending')" :key="t.id">
+                                                <Button variant="outline" size="sm" class="h-7 text-xs text-green-700" @click="makeSuccess(t.id)">
+                                                    <CheckCircle class="mr-1 h-3 w-3" />
+                                                    Make Success
+                                                </Button>
+                                                <Button variant="outline" size="sm" class="h-7 text-xs text-red-700" @click="makeFailed(t.id)">
+                                                    <XCircle class="mr-1 h-3 w-3" />
+                                                    Make Failed
+                                                </Button>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <Separator v-if="manualBills.length > 0" />
+
+                <!-- All Bills History -->
+                <div>
+                    <HeadingSmall title="Riwayat Tagihan" :description="`${allBills.length} tagihan`" />
+                    <div class="overflow-hidden rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="border-b bg-muted/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-medium">#</th>
+                                    <th class="px-4 py-3 text-left font-medium">Total</th>
+                                    <th class="px-4 py-3 text-left font-medium">Mulai</th>
+                                    <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 text-left font-medium">Status</th>
+                                    <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="allBills.length === 0">
+                                    <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada bill.</td>
+                                </tr>
+                                <tr v-for="(bill, idx) in allBills" :key="bill.id" class="border-b last:border-0">
+                                    <td class="px-4 py-3 font-medium">{{ idx + 1 }}</td>
+                                    <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
+                                    <td class="px-4 py-3">{{ bill.start_date }}</td>
+                                    <td class="px-4 py-3">{{ bill.due_date }}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                            {{ bill.status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <Button variant="ghost" size="sm" class="h-7 text-xs" @click="openStatusDialog(bill)"> Ubah Status </Button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             </div>
@@ -297,20 +438,36 @@ const formatDuration = (days: number) => {
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Buat Bill Baru</DialogTitle>
-                    <DialogDescription> Buat tagihan untuk {{ tenant.name }} di kamar {{ tenant.room_number }}. </DialogDescription>
+                    <DialogDescription> Buat tagihan untuk {{ tenant.name }}. </DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitBill" class="space-y-4">
+                    <!-- Room selection -->
+                    <div class="grid gap-2">
+                        <Label for="bill_room_id">Room</Label>
+                        <select
+                            id="bill_room_id"
+                            v-model="billForm.room_id"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="" disabled>Pilih room...</option>
+                            <option v-for="room in tenant.rooms" :key="room.id" :value="room.id">
+                                {{ room.kost_name }} — {{ room.room_number }}
+                            </option>
+                        </select>
+                    </div>
+
                     <!-- Pricing -->
                     <div class="grid gap-2">
                         <Label for="pricing_id">Durasi / Paket</Label>
                         <select
                             id="pricing_id"
                             v-model="billForm.pricing_id"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            :disabled="!billForm.room_id"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                         >
                             <option value="" disabled>Pilih durasi...</option>
-                            <option v-for="p in pricings" :key="p.id" :value="p.id">
+                            <option v-for="p in filteredPricings" :key="p.id" :value="p.id">
                                 {{ formatDuration(p.duration_days) }} — {{ formatCurrency(p.price) }}
                             </option>
                         </select>
@@ -338,7 +495,7 @@ const formatDuration = (days: number) => {
                         <DialogClose as-child>
                             <Button type="button" variant="secondary">Batal</Button>
                         </DialogClose>
-                        <Button type="submit" :disabled="billForm.processing || !billForm.pricing_id || !billForm.start_date">
+                        <Button type="submit" :disabled="billForm.processing || !billForm.room_id || !billForm.pricing_id || !billForm.start_date">
                             <LoaderCircle v-if="billForm.processing" class="mr-1.5 h-4 w-4 animate-spin" />
                             Buat Bill
                         </Button>

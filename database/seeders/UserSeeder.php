@@ -13,6 +13,7 @@ class UserSeeder extends Seeder
     {
         $ownerRole = Role::where('name', 'owner')->first();
         $adminRole = Role::where('name', 'admin')->first();
+        $superadminRole = Role::where('name', 'superadmin')->first();
 
         $owner = User::create([
             'name' => 'Owner User',
@@ -21,6 +22,14 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
         ]);
         $owner->roles()->attach($ownerRole);
+
+        $superadmin = User::create([
+            'name' => 'Super Admin User',
+            'email' => 'superadmin@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+        ]);
+        $superadmin->roles()->attach($superadminRole);
 
         $admin = User::create([
             'name' => 'Admin User',
