@@ -111,12 +111,27 @@ class TransactionController extends Controller
             'remark' => 'nullable|string|max:1000',
         ]);
 
-        TransactionRefund::create([
-            'bill_id' => $transaction->bill_id,
-            'amount' => $validated['amount'],
-            'remark' => $validated['remark'] ?? null,
-        ]);
+        // Create a refund request record and mark the bill as 'refund_request'
+        // Avoid duplicate requests: update existing request or create new
+        $existing = TransactionRefund::where('bill_id', $transaction->bill_id)->first();
+        if ($existing) {
+            $existing->update([
+                'amount' => $validated['amount'],
+                'remark' => $validated['remark'] ?? null,
+            ]);
+        } else {
+            TransactionRefund::create([
+                'bill_id' => $transaction->bill_id,
+                'amount' => $validated['amount'],
+                'remark' => $validated['remark'] ?? null,
+            ]);
+        }
 
-        return back()->with('success', 'Refund berhasil diajukan.');
+        // Mark bill as refund_request so admin can review in Refund Request menu
+        if ($transaction->bill) {
+            $transaction->bill->update(['status' => 'refund_request']);
+        }
+
+        return back()->with('success', 'Refund request berhasil diajukan dan menunggu persetujuan.');
     }
 }

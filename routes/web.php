@@ -7,6 +7,8 @@ use App\Http\Controllers\Master\KostController;
 use App\Http\Controllers\Master\RoomCategoryController;
 use App\Http\Controllers\Master\RoomController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\Transaction\RefundRequestController;
+use App\Http\Controllers\Transaction\SignatureController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -21,6 +23,8 @@ Route::get('dashboard', function () {
 Route::middleware(['auth', 'verified'])->prefix('master')->name('master.')->group(function () {
     Route::resource('kosts', KostController::class)->except(['show']);
     Route::resource('rooms', RoomController::class)->except(['show']);
+    Route::get('rooms/{room}/bills', [RoomController::class, 'bills'])->name('rooms.bills');
+    Route::get('rooms/{room}/bills/log', [RoomController::class, 'billsLog'])->name('rooms.bills.log');
 
     Route::get('room-categories', [RoomCategoryController::class, 'index'])->name('room-categories.index');
     Route::get('room-categories/kosts', [RoomCategoryController::class, 'kosts'])->name('room-categories.kosts');
@@ -42,6 +46,15 @@ Route::middleware(['auth', 'verified'])->prefix('management')->name('management.
 });
 
 Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transactions.')->group(function () {
+    // Refund request management
+    Route::get('refund-requests', [RefundRequestController::class, 'index'])->name('refund-requests.index');
+    Route::patch('refund-requests/{bill}/approve', [RefundRequestController::class, 'approve'])->name('refund-requests.approve');
+    Route::patch('refund-requests/{bill}/reject', [RefundRequestController::class, 'reject'])->name('refund-requests.reject');
+
+    // Signature management
+    Route::get('signatures', [SignatureController::class, 'index'])->name('signatures.index');
+    Route::patch('signatures/{bill}/sign', [SignatureController::class, 'sign'])->name('signatures.sign');
+
     Route::get('/', [TransactionController::class, 'index'])->name('index');
     Route::get('/{transaction}', [TransactionController::class, 'show'])->name('show');
     Route::post('/{transaction}/refund', [TransactionController::class, 'refund'])->name('refund');

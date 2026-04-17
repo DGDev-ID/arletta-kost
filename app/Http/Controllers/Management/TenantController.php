@@ -194,7 +194,7 @@ class TenantController extends Controller
     public function update(Request $request, Tenant $tenant): RedirectResponse
     {
         $validated = $request->validate([
-            'room_ids' => 'required|array|min:1',
+            'room_ids' => 'nullable|array',
             'room_ids.*' => 'exists:rooms,id',
             'email' => 'required|email|max:255',
             'name' => 'required|string|max:255',
@@ -208,10 +208,10 @@ class TenantController extends Controller
         ]);
 
         $oldRoomIds = $tenant->rooms->pluck('id')->toArray();
-        $newRoomIds = $validated['room_ids'];
+        $newRoomIds = $validated['room_ids'] ?? null;
 
-        $tenant->update([
-            'room_id' => $newRoomIds[0] ?? null,
+        // Prepare update payload; only change room_id if rooms submitted
+        $updateData = [
             'email' => $validated['email'],
             'name' => $validated['name'],
             'nik' => $validated['nik'] ?? null,
@@ -221,20 +221,29 @@ class TenantController extends Controller
             'gender' => $validated['gender'] ?? null,
             'address' => $validated['address'] ?? null,
             'phone_number' => $validated['phone_number'],
-        ]);
+        ];
 
-        $tenant->rooms()->sync($newRoomIds);
-
-        // Free removed rooms
-        $removedRoomIds = array_diff($oldRoomIds, $newRoomIds);
-        if (! empty($removedRoomIds)) {
-            Room::whereIn('id', $removedRoomIds)->update(['status' => 'available']);
+        if ($newRoomIds !== null) {
+            $updateData['room_id'] = $newRoomIds[0] ?? null;
         }
 
-        // Mark new rooms as occupied
-        $addedRoomIds = array_diff($newRoomIds, $oldRoomIds);
-        if (! empty($addedRoomIds)) {
-            Room::whereIn('id', $addedRoomIds)->update(['status' => 'occupied']);
+        $tenant->update($updateData);
+
+        // If room_ids present in request, sync and update room statuses
+        if ($newRoomIds !== null) {
+            $tenant->rooms()->sync($newRoomIds);
+
+            // Free removed rooms
+            $removedRoomIds = array_diff($oldRoomIds, $newRoomIds);
+            if (! empty($removedRoomIds)) {
+                Room::whereIn('id', $removedRoomIds)->update(['status' => 'available']);
+            }
+
+            // Mark new rooms as occupied
+            $addedRoomIds = array_diff($newRoomIds, $oldRoomIds);
+            if (! empty($addedRoomIds)) {
+                Room::whereIn('id', $addedRoomIds)->update(['status' => 'occupied']);
+            }
         }
 
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil diperbarui.');

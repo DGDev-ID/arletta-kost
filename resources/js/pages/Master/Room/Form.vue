@@ -103,10 +103,12 @@ watch(showCategoryModal, (open) => {
     <Head :title="isEdit ? 'Edit Room' : 'Tambah Room'" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
+        <div class="min-h-screen bg-muted/40">
+            <div class="max-w-3xl mx-auto px-16 py-8">
+                <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
-            <Heading :title="isEdit ? 'Edit Room' : 'Tambah Room'" />
+            <Heading :title="isEdit ? 'Edit Room' : 'Tambah Room'"
+            description="tambahkan atau edit data room sesuai kebutuhan" />
 
             <div class="mx-auto w-full max-w-xl">
                 <form @submit.prevent="submit" class="space-y-6">
@@ -153,8 +155,8 @@ watch(showCategoryModal, (open) => {
                         <InputError :message="form.errors.room_number" />
                     </div>
 
-                    <!-- Status -->
-                    <div class="grid gap-2">
+                    <!-- Status (hidden when editing) -->
+                    <div v-if="!isEdit" class="grid gap-2">
                         <Label for="status">Status</Label>
                         <select
                             id="status"
@@ -178,6 +180,7 @@ watch(showCategoryModal, (open) => {
                         </Button>
                     </div>
                 </form>
+            </div>
             </div>
             </div>
         </div>

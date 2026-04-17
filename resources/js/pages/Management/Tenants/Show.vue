@@ -85,7 +85,7 @@ const flash = computed(() => {
     return page?.props?.flash as { success?: string; error?: string } | undefined;
 });
 
-const activeTab = ref<'info' | 'rooms' | 'bills'>('info');
+// Show page will display all sections as cards (no tabs)
 
 // --- Bill Form ---
 const showBillDialog = ref(false);
@@ -244,17 +244,17 @@ const allBills = computed(() => props.bills);
                                 :description="`${tenant.rooms.map(r => `${r.kost_name} — ${r.room_number}`).join(', ')}`" />
                     </div>
 
-                    <div class="flex gap-2">
+                    <div >
                         <button
                             @click="showBillDialog = true"
                             class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             <FileText class="h-4 w-4" />
                             Create Bill
                         </button>
-                        <Link :href="route('management.tenants.edit', tenant.id)"
+                        <!-- <Link :href="route('management.tenants.edit', tenant.id)"
                             class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             Edit Tenant
-                        </Link>
+                        </Link> -->
                     </div>
                 </div>
             </div>
@@ -267,25 +267,10 @@ const allBills = computed(() => props.bills);
                 {{ flash.success }}
             </div>
 
-            <!-- Tabs -->
-            <div class="flex gap-1 border-b">
-                <button
-                    v-for="tab in (['info', 'rooms', 'bills'] as const)"
-                    :key="tab"
-                    @click="activeTab = tab"
-                    :class="[
-                        'px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize',
-                        activeTab === tab
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground'
-                    ]"
-                >
-                    {{ tab }}
-                </button>
-            </div>
+            <!-- All sections shown as cards (Info, Rooms, Bills) -->
 
-            <!-- Tab: Info -->
-            <div v-if="activeTab === 'info'" class="rounded-lg border p-4 space-y-4">
+            <!-- Tenant Info -->
+            <div class="rounded-lg border p-4 space-y-4">
                 <HeadingSmall title="Info Tenant" description="Data pribadi tenant" />
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
@@ -319,8 +304,8 @@ const allBills = computed(() => props.bills);
                 </div>
             </div>
 
-            <!-- Tab: Rooms -->
-            <div v-if="activeTab === 'rooms'" class="space-y-4">
+            <!-- Rooms -->
+            <div class="rounded-lg border p-4 space-y-4">
                 <HeadingSmall title="Rooms" :description="`${tenant.rooms.length} room(s) ditempati`" />
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div v-for="room in tenant.rooms" :key="room.id" class="rounded-lg border p-4 space-y-2">
@@ -336,8 +321,8 @@ const allBills = computed(() => props.bills);
                 </div>
             </div>
 
-            <!-- Tab: Bills -->
-            <div v-if="activeTab === 'bills'" class="space-y-6">
+            <!-- Bills -->
+            <div class="rounded-lg border p-4 space-y-6">
                 <!-- Manual Bills (unpaid/pending) -->
                 <div v-if="manualBills.length > 0">
                     <HeadingSmall title="Bills Menunggu Konfirmasi (Manual)" :description="`${manualBills.length} bill(s) perlu tindakan`" />

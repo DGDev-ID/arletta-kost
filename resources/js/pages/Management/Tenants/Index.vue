@@ -130,7 +130,7 @@ const deleteTenant = () => {
                             <th class="px-4 py-3 text-left font-medium">Nama</th>
                             <th class="px-4 py-3 text-left font-medium">Email</th>
                             <th class="px-4 py-3 text-left font-medium">No. HP</th>
-                            <th class="px-4 py-3 text-left font-medium">Rooms</th>
+                            <th class="px-4 py-3 text-left font-medium w-64">Rooms</th>
                             <th class="px-4 py-3 text-left font-medium">Bills</th>
                             <th class="px-4 py-3 text-right font-medium">Aksi</th>
                         </tr>
@@ -142,7 +142,7 @@ const deleteTenant = () => {
                         <tr v-for="tenant in tenants.data" :key="tenant.id" class="border-b last:border-0">
                             <td class="px-4 py-3 font-medium">{{ tenant.name }}</td>
                             <td class="px-4 py-3">{{ tenant.email }}</td>
-                            <td class="px-4 py-3">{{ tenant.phone_number }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap">{{ tenant.phone_number }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-wrap gap-1">
                                     <span v-for="(room, idx) in tenant.rooms" :key="idx" class="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
@@ -151,15 +151,17 @@ const deleteTenant = () => {
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="text-xs">
-                                    {{ tenant.bills_count }} total
-                                    <span
-                                        v-if="tenant.unpaid_bills > 0"
-                                        class="ml-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                               <div class="flex items-center gap-2 whitespace-nowrap">       
+                                   <span class="text-xs">
+                                       {{ tenant.bills_count }} total
+                                       <span
+                                       v-if="tenant.unpaid_bills > 0"
+                                       class="ml-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                     >
                                         {{ tenant.unpaid_bills }} unpaid
                                     </span>
                                 </span>
+                            </div>
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1">

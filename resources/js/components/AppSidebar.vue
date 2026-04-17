@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BedDouble, Building, FolderTree, LayoutGrid, Shield, Users, Wallet } from 'lucide-vue-next';
+import { BedDouble, Building, FolderTree, LayoutGrid, Shield, Users, Wallet, FileSignature } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -49,9 +49,19 @@ const managementNavItems: NavItem[] = [
 
 const transactionNavItems: NavItem[] = [
     {
-        title: 'Transactions',
+        title: 'History Transactions',
         href: '/transactions',
         icon: Wallet,
+    },
+    {
+        title: 'Refund Request',
+        href: '/transactions/refund-requests',
+        icon: Wallet,
+    },
+    {
+        title: 'Signature',
+        href: '/transactions/signatures',
+        icon: FileSignature,
     },
 ];
 </script>

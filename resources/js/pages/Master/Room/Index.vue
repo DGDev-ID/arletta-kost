@@ -17,7 +17,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
-import { Pencil, Plus, Search, Settings, Trash2 } from 'lucide-vue-next';
+import { Pencil, Plus, Search, Settings, Trash2, List } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 interface RoomItem {
@@ -115,6 +115,8 @@ const deleteRoom = () => {
         },
     });
 };
+
+// Log now opens a dedicated page; no modal/fetch here.
 </script>
 
 <template>
@@ -131,13 +133,13 @@ const deleteRoom = () => {
                     <Heading title="Manage Rooms"
                             :description="`Kelola data room terdaftar. Total Rooms: ${rooms.total}`" />
 
-                    <div class="flex gap-2">
-                        <button
+                    <div>
+                        <!-- <button
                             @click="showCategoryModal = true"
                             class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             <Settings class="h-4 w-4" />
                             Manage Categories
-                        </button>
+                        </button> -->
                         <Link :href="route('master.rooms.create')"
                             class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
                             Add Room
@@ -197,6 +199,11 @@ const deleteRoom = () => {
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1">
                                     <Button variant="ghost" size="icon" class="h-8 w-8" as-child>
+                                        <Link :href="route('master.rooms.bills.log', room.id)">
+                                            <List class="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                    <Button variant="ghost" size="icon" class="h-8 w-8" as-child>
                                         <Link :href="route('master.rooms.edit', room.id)">
                                             <Pencil class="h-4 w-4" />
                                         </Link>
@@ -233,6 +240,8 @@ const deleteRoom = () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Paid bills now shown in dedicated page -->
 
         <!-- Room Category Modal -->
         <RoomCategoryModal v-model:open="showCategoryModal" />

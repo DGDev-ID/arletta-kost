@@ -85,8 +85,8 @@ const submit = () => {
 
             <div class="mx-auto w-full max-w-xl">
                 <form @submit.prevent="submit" class="space-y-6">
-                    <!-- Room (Multiple) -->
-                    <div class="grid gap-2">
+                    <!-- Room (Multiple) - only when creating a tenant -->
+                    <div v-if="!isEdit" class="grid gap-2">
                         <Label>Rooms</Label>
                         <p class="text-xs text-muted-foreground">Pilih satu atau lebih room untuk tenant ini.</p>
                         <div class="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">

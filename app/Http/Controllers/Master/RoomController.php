@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Kost;
 use App\Models\Room;
 use App\Models\RoomCategory;
+use App\Models\Bill;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -126,5 +128,59 @@ class RoomController extends Controller
         $room->delete();
 
         return to_route('master.rooms.index')->with('success', 'Room berhasil dihapus.');
+    }
+
+    public function bills(Room $room): JsonResponse
+    {
+        $bills = Bill::where('room_id', $room->id)
+            ->where('status', 'paid')
+            ->with('tenant')
+            ->orderByDesc('due_date')
+            ->get()
+            ->map(fn (Bill $b) => [
+                'id' => $b->id,
+                'tenant_name' => $b->tenant?->name,
+                'total_price' => $b->total_price,
+                'start_date' => $b->start_date?->toDateString(),
+                'due_date' => $b->due_date?->toDateString(),
+                'signature' => $b->signature,
+                'status' => $b->status,
+            ]);
+
+        return response()->json(['data' => $bills]);
+    }
+
+    public function billsLog(Request $request, Room $room): Response
+    {
+        $search = $request->input('search', '');
+
+        $room->load('roomCategory.kost');
+
+        // show all paid bills regardless of date
+        $query = Bill::where('room_id', $room->id)
+            ->where('status', 'paid')
+            ->with('tenant')
+            ->when($search, fn ($q) => $q->whereHas('tenant', fn ($q2) => $q2->where('name', 'like', "%{$search}%")))
+            ->orderBy('start_date', 'asc');
+
+        $bills = $query->paginate(15)
+            ->through(fn (Bill $b) => [
+                'id' => $b->id,
+                'tenant_name' => $b->tenant?->name,
+                'tenant_phone' => $b->tenant?->phone_number,
+                'start_date' => $b->start_date?->toDateString(),
+                'due_date' => $b->due_date?->toDateString(),
+            ]);
+
+        return Inertia::render('Master/Room/BillsLog', [
+            'room' => [
+                'id' => $room->id,
+                'room_number' => $room->room_number,
+                'category_name' => $room->roomCategory?->name,
+                'kost_name' => $room->roomCategory?->kost?->name,
+            ],
+            'bills' => $bills,
+            'filters' => ['search' => $search],
+        ]);
     }
 }

@@ -91,6 +91,11 @@ class RoomCategoryController extends Controller
             'details' => 'nullable|array',
             'details.*.detail' => 'required|string|max:255',
             'details.*.icon' => 'nullable|string|max:100',
+            'pricings' => 'nullable|array',
+            'pricings.*.duration_days' => 'required_with:pricings|integer|min:1',
+            'pricings.*.price' => 'required_with:pricings|numeric|min:0',
+            'pricings.*.promos' => 'nullable|array',
+            'pricings.*.promos.*.type' => 'required_with:pricings.*.promos|string|max:100',
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -119,6 +124,24 @@ class RoomCategoryController extends Controller
                     ]);
                 }
             }
+
+            // Handle pricings + promos
+            if (! empty($validated['pricings'])) {
+                foreach ($validated['pricings'] as $pricing) {
+                    $p = $category->pricings()->create([
+                        'duration_days' => $pricing['duration_days'],
+                        'price' => $pricing['price'],
+                    ]);
+
+                    if (! empty($pricing['promos'])) {
+                        foreach ($pricing['promos'] as $promo) {
+                            $p->promos()->create([
+                                'type' => $promo['type'],
+                            ]);
+                        }
+                    }
+                }
+            }
         });
 
         return to_route('master.room-categories.index')->with('success', 'Kategori berhasil ditambahkan.');
@@ -126,7 +149,7 @@ class RoomCategoryController extends Controller
 
     public function edit(RoomCategory $roomCategory): Response
     {
-        $roomCategory->load(['images', 'details']);
+        $roomCategory->load(['images', 'details', 'pricings.promos']);
         $kosts = Kost::select('id', 'name')->get();
 
         return Inertia::render('Master/RoomCategory/Form', [
@@ -144,6 +167,15 @@ class RoomCategoryController extends Controller
                     'id' => $d->id,
                     'detail' => $d->detail,
                     'icon' => $d->icon,
+                ]),
+                'pricings' => $roomCategory->pricings->map(fn ($p) => [
+                    'id' => $p->id,
+                    'duration_days' => $p->duration_days,
+                    'price' => $p->price,
+                    'promos' => $p->promos->map(fn ($r) => [
+                        'id' => $r->id,
+                        'type' => $r->type,
+                    ]),
                 ]),
             ],
             'kosts' => $kosts,
@@ -187,6 +219,13 @@ class RoomCategoryController extends Controller
             'details.*.id' => 'nullable|integer',
             'details.*.detail' => 'required|string|max:255',
             'details.*.icon' => 'nullable|string|max:100',
+            'pricings' => 'nullable|array',
+            'pricings.*.id' => 'nullable|integer',
+            'pricings.*.duration_days' => 'required_with:pricings|integer|min:1',
+            'pricings.*.price' => 'required_with:pricings|numeric|min:0',
+            'pricings.*.promos' => 'nullable|array',
+            'pricings.*.promos.*.id' => 'nullable|integer',
+            'pricings.*.promos.*.type' => 'required_with:pricings.*.promos|string|max:100',
         ]);
 
         DB::transaction(function () use ($validated, $request, $roomCategory) {
@@ -237,6 +276,49 @@ class RoomCategoryController extends Controller
             }
             // Remove details not in the submitted list
             $roomCategory->details()->whereNotIn('id', $existingIds)->delete();
+
+            // Sync pricings and promos
+            $existingPricingIds = [];
+            if (! empty($validated['pricings'])) {
+                foreach ($validated['pricings'] as $pricing) {
+                    if (! empty($pricing['id'])) {
+                        $roomCategory->pricings()->where('id', $pricing['id'])->update([
+                            'duration_days' => $pricing['duration_days'],
+                            'price' => $pricing['price'],
+                        ]);
+                        $pModel = $roomCategory->pricings()->where('id', $pricing['id'])->first();
+                        $existingPricingIds[] = $pricing['id'];
+                    } else {
+                        $pModel = $roomCategory->pricings()->create([
+                            'duration_days' => $pricing['duration_days'],
+                            'price' => $pricing['price'],
+                        ]);
+                        $existingPricingIds[] = $pModel->id;
+                    }
+
+                    // Sync promos for this pricing
+                    $existingPromoIds = [];
+                    if (! empty($pricing['promos'])) {
+                        foreach ($pricing['promos'] as $promo) {
+                            if (! empty($promo['id'])) {
+                                $pModel->promos()->where('id', $promo['id'])->update([
+                                    'type' => $promo['type'],
+                                ]);
+                                $existingPromoIds[] = $promo['id'];
+                            } else {
+                                $newPromo = $pModel->promos()->create([
+                                    'type' => $promo['type'],
+                                ]);
+                                $existingPromoIds[] = $newPromo->id;
+                            }
+                        }
+                    }
+                    // remove promos not in submitted list
+                    $pModel->promos()->whereNotIn('id', $existingPromoIds)->delete();
+                }
+            }
+            // Remove pricings not in submitted list
+            $roomCategory->pricings()->whereNotIn('id', $existingPricingIds)->delete();
         });
 
         return to_route('master.room-categories.index')->with('success', 'Kategori berhasil diperbarui.');

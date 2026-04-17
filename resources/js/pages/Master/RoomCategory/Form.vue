@@ -27,6 +27,18 @@ interface DetailItem {
     icon: string;
 }
 
+interface PromoItem {
+    id?: number;
+    type: string;
+}
+
+interface PricingItem {
+    id?: number;
+    duration_days: number | null;
+    price: number | null;
+    promos: PromoItem[];
+}
+
 interface CategoryData {
     id: number;
     kost_id: number;
@@ -54,6 +66,12 @@ const kost_id = ref(props.category?.kost_id ?? '');
 const name = ref(props.category?.name ?? '');
 const description = ref(props.category?.description ?? '');
 const details = ref<DetailItem[]>(props.category?.details?.map(d => ({ ...d })) ?? []);
+const pricings = ref<PricingItem[]>(props.category?.pricings?.map((p: any) => ({
+    id: p.id,
+    duration_days: p.duration_days,
+    price: p.price,
+    promos: (p.promos ?? []).map((r: any) => ({ id: r.id, type: r.type })),
+})) ?? []);
 const existingImages = ref<ImageItem[]>(props.category?.images?.map(i => ({ ...i })) ?? []);
 const newImages = ref<File[]>([]);
 const newImagePreviews = ref<string[]>([]);
@@ -64,6 +82,23 @@ const errors = ref<Record<string, string>>({});
 // Add detail row
 const addDetail = () => {
     details.value.push({ detail: '', icon: '' });
+};
+
+// Pricing handlers
+const addPricing = () => {
+    pricings.value.push({ duration_days: 30, price: 0, promos: [] });
+};
+
+const removePricing = (index: number) => {
+    pricings.value.splice(index, 1);
+};
+
+const addPromo = (pricingIndex: number) => {
+    pricings.value[pricingIndex].promos.push({ type: '' });
+};
+
+const removePromo = (pricingIndex: number, promoIndex: number) => {
+    pricings.value[pricingIndex].promos.splice(promoIndex, 1);
 };
 
 // Remove detail row
@@ -125,6 +160,17 @@ const submit = () => {
         formData.append(`details[${i}][icon]`, d.icon || '');
     });
 
+    // Pricings and promos
+    pricings.value.forEach((p, i) => {
+        if (p.id) formData.append(`pricings[${i}][id]`, String(p.id));
+        formData.append(`pricings[${i}][duration_days]`, String(p.duration_days ?? ''));
+        formData.append(`pricings[${i}][price]`, String(p.price ?? 0));
+        (p.promos || []).forEach((pr, j) => {
+            if (pr.id) formData.append(`pricings[${i}][promos][${j}][id]`, String(pr.id));
+            formData.append(`pricings[${i}][promos][${j}][type]`, pr.type || '');
+        });
+    });
+
     const url = isEdit.value
         ? route('master.room-categories.update', props.category!.id)
         : route('master.room-categories.store');
@@ -146,10 +192,12 @@ const submit = () => {
     <Head :title="isEdit ? 'Edit Category' : 'Tambah Category'" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
+        <div class="min-h-screen bg-muted/40">
+            <div class="max-w-3xl mx-auto px-16 py-8">
+                <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
-            <Heading :title="isEdit ? 'Edit Room Category' : 'Tambah Room Category'" />
+            <Heading :title="isEdit ? 'Edit Room Category' : 'Tambah Room Category'"
+            description="Tambah Informasi Kategori Kamar" />
 
             <div class="mx-auto w-full max-w-2xl">
                 <form @submit.prevent="submit" class="space-y-6">
@@ -256,6 +304,63 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <!-- Pricings -->
+                    <div class="grid gap-3">
+                        <div class="flex items-center justify-between">
+                            <Label>Pricings</Label>
+                            <Button type="button" variant="outline" size="sm" @click="addPricing">
+                                <Plus class="mr-1 h-3 w-3" />
+                                Tambah Pricing
+                            </Button>
+                        </div>
+
+                        <div v-if="pricings.length === 0" class="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                            Belum ada pricing. Klik "Tambah Pricing" untuk menambahkan.
+                        </div>
+
+                        <div v-for="(pricing, pidx) in pricings" :key="pidx" class="rounded-lg border bg-muted/30 p-3 space-y-3">
+                            <div class="flex gap-3">
+                                <div class="flex-1 grid gap-2">
+                                    <Label>Durasi (hari)</Label>
+                                    <Input type="number" v-model.number="pricing.duration_days" />
+                                </div>
+                                <div class="w-48 grid gap-2">
+                                    <Label>Harga (IDR)</Label>
+                                    <Input type="number" v-model.number="pricing.price" />
+                                </div>
+                                <div class="flex items-start">
+                                    <Button type="button" variant="ghost" size="icon" class="h-9 w-9 mt-6 text-destructive" @click="removePricing(pidx)">
+                                        <Trash2 class="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <!-- Promos for this pricing -->
+                            <div class="grid gap-2">
+                                <div class="flex items-center justify-between">
+                                    <Label>Promos</Label>
+                                    <Button type="button" variant="outline" size="sm" @click="addPromo(pidx)">
+                                        <Plus class="mr-1 h-3 w-3" />
+                                        Tambah Promo
+                                    </Button>
+                                </div>
+
+                                <div v-if="pricing.promos.length === 0" class="rounded-lg border border-dashed px-4 py-4 text-center text-sm text-muted-foreground">
+                                    Belum ada promo untuk pricing ini.
+                                </div>
+
+                                <div v-for="(promo, pridx) in pricing.promos" :key="pridx" class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <Input v-model="promo.type" placeholder="Type promo, misal: cashback, bonus_days" />
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" class="h-9 w-9 text-destructive" @click="removePromo(pidx, pridx)">
+                                        <Trash2 class="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex gap-3">
                         <Button type="submit" :disabled="processing">
                             <LoaderCircle v-if="processing" class="mr-1.5 h-4 w-4 animate-spin" />
@@ -266,6 +371,7 @@ const submit = () => {
                         </Button>
                     </div>
                 </form>
+            </div>
             </div>
             </div>
         </div>
