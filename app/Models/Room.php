@@ -14,6 +14,7 @@ class Room extends Model
         'room_category_id',
         'room_number',
         'status',
+        'gender',
     ];
 
     public function roomCategory(): BelongsTo

@@ -83,6 +83,7 @@ class RoomController extends Controller
             'room_category_id' => 'required|exists:room_categories,id',
             'room_number' => 'required|string|max:50',
             'status' => 'required|in:available,occupied,maintenance',
+            'gender' => 'required|in:male,female,mixed',
         ]);
 
         Room::create($validated);
@@ -104,7 +105,7 @@ class RoomController extends Controller
         $kosts = Kost::select('id', 'name')->get();
 
         return Inertia::render('Master/Room/Form', [
-            'room' => $room->only('id', 'room_category_id', 'room_number', 'status'),
+            'room' => $room->only('id', 'room_category_id', 'room_number', 'status', 'gender'),
             'categories' => $categories,
             'kosts' => $kosts,
         ]);

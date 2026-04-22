@@ -48,6 +48,7 @@ const form = useForm({
     room_category_id: props.room?.room_category_id ?? '',
     room_number: props.room?.room_number ?? '',
     status: props.room?.status ?? 'available',
+    gender: props.room?.gender ?? 'mixed',
 });
 
 const showCategoryModal = ref(false);
@@ -153,6 +154,21 @@ watch(showCategoryModal, (open) => {
                         <Label for="room_number">Nomor Kamar</Label>
                         <Input id="room_number" v-model="form.room_number" placeholder="Contoh: S001" />
                         <InputError :message="form.errors.room_number" />
+                    </div>
+
+                    <!-- Gender -->
+                    <div class="grid gap-2">
+                        <Label for="gender">Tipe Kamar</Label>
+                        <select
+                            id="gender"
+                            v-model="form.gender"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                            <option value="male">Laki-laki</option>
+                            <option value="female">Perempuan</option>
+                            <option value="mixed">Campur</option>
+                        </select>
+                        <InputError :message="form.errors.gender" />
                     </div>
 
                     <!-- Status (hidden when editing) -->
