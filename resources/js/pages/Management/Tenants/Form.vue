@@ -28,6 +28,8 @@ interface TenantData {
     gender: string | null;
     address: string | null;
     phone_number: string;
+    start_date: string | null;
+    end_date: string | null;
 }
 
 const props = defineProps<{
@@ -54,6 +56,8 @@ const form = useForm({
     gender: props.tenant?.gender ?? '',
     address: props.tenant?.address ?? '',
     phone_number: props.tenant?.phone_number ?? '',
+    start_date: props.tenant?.start_date ?? '',
+    end_date: props.tenant?.end_date ?? '',
 });
 
 const toggleRoom = (roomId: number) => {
@@ -78,123 +82,140 @@ const submit = () => {
     <Head :title="isEdit ? 'Edit Tenant' : 'Tambah Tenant'" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
+        <div class="min-h-screen bg-muted/40">
+            <div class="max-w-7xl mx-auto px-6 py-8">
+                <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
-            <Heading :title="isEdit ? 'Edit Tenant' : 'Tambah Tenant'" />
+            <Heading :title="isEdit ? 'Edit Tenant' : 'Tambah Tenant'"
+            description="Tambahkan atau edit data tenant sesuai kebutuhan" />
 
-            <div class="mx-auto w-full max-w-xl">
-                <form @submit.prevent="submit" class="space-y-6">
-                    <!-- Room (Multiple) - only when creating a tenant -->
-                    <div v-if="!isEdit" class="grid gap-2">
-                        <Label>Rooms</Label>
-                        <p class="text-xs text-muted-foreground">Pilih satu atau lebih room untuk tenant ini.</p>
-                        <div class="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">
-                            <div v-if="rooms.length === 0" class="text-sm text-muted-foreground">Tidak ada room tersedia.</div>
-                            <label
-                                v-for="room in rooms"
-                                :key="room.id"
-                                class="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50 cursor-pointer"
-                            >
-                                <input
-                                    type="checkbox"
-                                    :checked="form.room_ids.includes(room.id)"
-                                    @change="toggleRoom(room.id)"
-                                    class="h-4 w-4 rounded border-input"
-                                />
-                                <span class="text-sm">{{ room.kost_name }} — {{ room.room_number }}</span>
-                            </label>
-                        </div>
-                        <InputError :message="form.errors.room_ids" />
-                    </div>
+            <form @submit.prevent="submit" class="space-y-6">
 
-                    <!-- Name -->
-                    <div class="grid gap-2">
-                        <Label for="name">Nama Lengkap</Label>
-                        <Input id="name" v-model="form.name" placeholder="Nama lengkap" />
-                        <InputError :message="form.errors.name" />
-                    </div>
+                <!-- ACTION BUTTON -->
+                <div class="flex justify-end">
+                    <Button type="submit" :disabled="form.processing">
+                        <LoaderCircle v-if="form.processing" class="mr-1.5 h-4 w-4 animate-spin" />
+                        {{ isEdit ? 'Update' : 'Simpan' }}
+                    </Button>
+                </div>
 
-                    <!-- Email -->
-                    <div class="grid gap-2">
-                        <Label for="email">Email</Label>
-                        <Input id="email" v-model="form.email" type="email" placeholder="email@example.com" />
-                        <InputError :message="form.errors.email" />
-                    </div>
+                <!-- GRID -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    <!-- Phone -->
-                    <div class="grid gap-2">
-                        <Label for="phone_number">No. HP</Label>
-                        <Input id="phone_number" v-model="form.phone_number" placeholder="08xxxxxxxxxx" />
-                        <InputError :message="form.errors.phone_number" />
-                    </div>
+                    <!-- LEFT: CREDENTIAL -->
+                    <div class="lg:col-span-1">
+                        <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-4">
+                            
+                            <h3 class="text-lg font-semibold">Credential</h3>
 
-                    <!-- Gender -->
-                    <div class="grid gap-2">
-                        <Label for="gender">Jenis Kelamin</Label>
-                        <select
-                            id="gender"
-                            v-model="form.gender"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        >
-                            <option value="">— Pilih —</option>
-                            <option value="male">Laki-laki</option>
-                            <option value="female">Perempuan</option>
-                        </select>
-                        <InputError :message="form.errors.gender" />
-                    </div>
+                            <!-- NAME -->
+                            <div class="grid gap-2">
+                                <Label>Nama Lengkap</Label>
+                                <Input v-model="form.name" />
+                                <InputError :message="form.errors.name" />
+                            </div>
 
-                    <!-- NIK -->
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <div class="grid gap-2">
-                            <Label for="nik">NIK</Label>
-                            <Input id="nik" v-model="form.nik" placeholder="NIK" />
-                            <InputError :message="form.errors.nik" />
-                        </div>
-                        <div class="grid gap-2">
-                            <Label for="ktp_number">No. KTP</Label>
-                            <Input id="ktp_number" v-model="form.ktp_number" placeholder="No. KTP" />
-                            <InputError :message="form.errors.ktp_number" />
+                            <!-- EMAIL -->
+                            <div class="grid gap-2">
+                                <Label>Email</Label>
+                                <Input v-model="form.email" type="email" />
+                                <InputError :message="form.errors.email" />
+                            </div>
+
+                            <!-- PHONE -->
+                            <div class="grid gap-2">
+                                <Label>No HP</Label>
+                                <Input v-model="form.phone_number" />
+                                <InputError :message="form.errors.phone_number" />
+                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Birth -->
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <div class="grid gap-2">
-                            <Label for="birth_place">Tempat Lahir</Label>
-                            <Input id="birth_place" v-model="form.birth_place" placeholder="Kota" />
-                            <InputError :message="form.errors.birth_place" />
-                        </div>
-                        <div class="grid gap-2">
-                            <Label for="birth_date">Tanggal Lahir</Label>
-                            <Input id="birth_date" v-model="form.birth_date" type="date" />
-                            <InputError :message="form.errors.birth_date" />
+                    <!-- RIGHT: DETAIL -->
+                    <div class="lg:col-span-2">
+                        <div class="rounded-2xl border bg-background p-6 shadow-sm space-y-6">
+
+                            <h3 class="text-lg font-semibold">User Detail</h3>
+
+                            <!-- ROOM -->
+                            <div v-if="!isEdit" class="grid gap-2">
+                                <Label>Rooms</Label>
+                                <div class="max-h-40 overflow-y-auto border p-2 rounded">
+                                    <label v-for="room in rooms" :key="room.id" class="flex gap-2">
+                                        <input
+                                            type="checkbox"
+                                            :checked="form.room_ids.includes(room.id)"
+                                            @change="toggleRoom(room.id)"
+                                        />
+                                        {{ room.kost_name }} - {{ room.room_number }}
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- GRID 2 COL -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                <div>
+                                    <Label>NIK</Label>
+                                    <Input v-model="form.nik" />
+                                </div>
+
+                                <div>
+                                    <Label>KTP</Label>
+                                    <Input v-model="form.ktp_number" />
+                                </div>
+
+                                <div>
+                                    <Label>Tempat Lahir</Label>
+                                    <Input v-model="form.birth_place" />
+                                </div>
+
+                                <div>
+                                    <Label>Tanggal Lahir</Label>
+                                    <Input type="date" v-model="form.birth_date" />
+                                </div>
+
+                                <div>
+                                    <Label>Gender</Label>
+                                    <select v-model="form.gender" class="border rounded px-2 py-2 w-full">
+                                        <option value="">Pilih</option>
+                                        <option value="male">Laki-laki</option>
+                                        <option value="female">Perempuan</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <Label>No HP</Label>
+                                    <Input v-model="form.phone_number" />
+                                </div>
+
+                            </div>
+
+                            <!-- BOOKING -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Tanggal Mulai</Label>
+                                    <Input type="date" v-model="form.start_date" />
+                                </div>
+                                <div>
+                                    <Label>Tanggal Selesai</Label>
+                                    <Input type="date" v-model="form.end_date" />
+                                </div>
+                            </div>
+
+                            <!-- ADDRESS -->
+                            <div>
+                                <Label>Alamat</Label>
+                                <textarea v-model="form.address" class="w-full border rounded p-2" />
+                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Address -->
-                    <div class="grid gap-2">
-                        <Label for="address">Alamat</Label>
-                        <textarea
-                            id="address"
-                            v-model="form.address"
-                            rows="3"
-                            placeholder="Alamat lengkap"
-                            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        ></textarea>
-                        <InputError :message="form.errors.address" />
-                    </div>
+                </div>
 
-                    <div class="flex gap-3">
-                        <Button type="submit" :disabled="form.processing">
-                            <LoaderCircle v-if="form.processing" class="mr-1.5 h-4 w-4 animate-spin" />
-                            {{ isEdit ? 'Update' : 'Simpan' }}
-                        </Button>
-                        <Button type="button" variant="secondary" as-child>
-                            <a :href="route('management.tenants.index')">Batal</a>
-                        </Button>
-                    </div>
-                </form>
+            </form>
             </div>
             </div>
         </div>

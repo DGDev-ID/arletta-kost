@@ -81,9 +81,11 @@ class RoomController extends Controller
     {
         $validated = $request->validate([
             'room_category_id' => 'required|exists:room_categories,id',
-            'room_number' => 'required|string|max:50',
+            'room_number' => 'required|string|max:50|unique:rooms,room_number',
             'status' => 'required|in:available,occupied,maintenance',
             'gender' => 'required|in:male,female,mixed',
+        ], [
+            'room_number.unique' => 'Nomor kamar sudah digunakan.',
         ]);
 
         Room::create($validated);
@@ -115,8 +117,10 @@ class RoomController extends Controller
     {
         $validated = $request->validate([
             'room_category_id' => 'required|exists:room_categories,id',
-            'room_number' => 'required|string|max:50',
+            'room_number' => 'required|string|max:50|unique:rooms,room_number,' . $room->id,
             'status' => 'required|in:available,occupied,maintenance',
+        ], [
+            'room_number.unique' => 'Nomor kamar sudah digunakan.',
         ]);
 
         $room->update($validated);

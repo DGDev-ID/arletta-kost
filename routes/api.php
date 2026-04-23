@@ -41,6 +41,7 @@ Route::get('categories/{roomCategory}/images', [RoomCategoryApiController::class
 Route::get('kosts/{kost}/rooms', [RoomApiController::class, 'index']);
 
 // ─── Rooms (standalone) ─────────────────────────────────────────────
+Route::get('rooms', [RoomApiController::class, 'list']);
 Route::get('rooms/{room}', [RoomApiController::class, 'show']);
 
 // ─── Inquiry (contact form) ─────────────────────────────────────────

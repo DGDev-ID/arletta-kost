@@ -25,6 +25,8 @@ interface TenantItem {
     email: string;
     phone_number: string;
     gender: string | null;
+    start_date: string | null;
+    end_date: string | null;
     rooms: { room_number: string; kost_name: string }[];
     bills_count: number;
     unpaid_bills: number;
@@ -100,11 +102,19 @@ const deleteTenant = () => {
 
             <!-- Header -->
             <div class="flex flex-col justify-between gap-4">
-                <div class="flex flex-row justify-between item-center">
 
-                    <Heading title="Manage Tenants"
-                            :description="`Kelola data tenant terdaftar. Total Tenants: ${tenants.total}`" />
+                <div class="flex flex-row justify-between items-center">
+                    <Heading
+                        title="Manage Tenants"
+                        :description="`Kelola data tenant terdaftar. Total Tenants: ${tenants.total}`"
+                    />
 
+                    <Button as-child>
+                        <Link :href="route('management.tenants.create')">
+                            <Plus class="w-4 h-4 mr-1" />
+                            Tambah Tenant
+                        </Link>
+                    </Button>
                 </div>
             </div>
 
@@ -131,13 +141,14 @@ const deleteTenant = () => {
                             <th class="px-4 py-3 text-left font-medium">Email</th>
                             <th class="px-4 py-3 text-left font-medium">No. HP</th>
                             <th class="px-4 py-3 text-left font-medium w-64">Rooms</th>
+                            <th class="px-4 py-3 text-left font-medium">Booking</th>
                             <th class="px-4 py-3 text-left font-medium">Bills</th>
                             <th class="px-4 py-3 text-right font-medium">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="tenants.data.length === 0">
-                            <td colspan="7" class="px-4 py-8 text-center text-muted-foreground">Tidak ada data tenant.</td>
+                            <td colspan="8" class="px-4 py-8 text-center text-muted-foreground">Tidak ada data tenant.</td>
                         </tr>
                         <tr v-for="tenant in tenants.data" :key="tenant.id" class="border-b last:border-0">
                             <td class="px-4 py-3 font-medium">{{ tenant.name }}</td>
@@ -149,6 +160,14 @@ const deleteTenant = () => {
                                         {{ room.kost_name }} — {{ room.room_number }}
                                     </span>
                                 </div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div v-if="tenant.start_date || tenant.end_date" class="text-xs">
+                                    <span>{{ tenant.start_date ?? '-' }}</span>
+                                    <span class="mx-1 text-muted-foreground">→</span>
+                                    <span>{{ tenant.end_date ?? '-' }}</span>
+                                </div>
+                                <span v-else class="text-xs text-muted-foreground">-</span>
                             </td>
                             <td class="px-4 py-3">
                                <div class="flex items-center gap-2 whitespace-nowrap">       

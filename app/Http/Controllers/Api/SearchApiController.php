@@ -122,6 +122,7 @@ class SearchApiController extends ApiBaseController
                     'id' => $room->id,
                     'room_number' => $room->room_number,
                     'status' => $room->status,
+                    'gender' => $room->gender,
                     'category_name' => $room->roomCategory->name,
                     'kost_name' => $room->roomCategory->kost->name,
                     'kost_id' => $room->roomCategory->kost->id,

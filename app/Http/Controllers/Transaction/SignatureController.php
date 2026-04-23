@@ -34,8 +34,25 @@ class SignatureController extends Controller
                 'due_date' => $bill->due_date?->format('d-m-Y'),
             ]);
 
+        // Bills that have been signed
+        $signedBills = Bill::with(['room.roomCategory.kost', 'tenant'])
+            ->where('status', 'paid')
+            ->whereNotNull('signature')
+            ->latest()
+            ->limit(20)
+            ->get()
+            ->map(fn (Bill $bill) => [
+                'id' => $bill->id,
+                'room_number' => $bill->room->room_number ?? '-',
+                'tenant_name' => $bill->tenant->name ?? '-',
+                'start_date' => $bill->start_date?->format('d-m-Y'),
+                'due_date' => $bill->due_date?->format('d-m-Y'),
+                'signature' => $bill->signature,
+            ]);
+
         return Inertia::render('Transactions/Signature/Index', [
             'bills' => $bills,
+            'signedBills' => $signedBills,
         ]);
     }
 

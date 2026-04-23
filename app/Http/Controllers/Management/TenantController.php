@@ -31,6 +31,8 @@ class TenantController extends Controller
                 'email' => $tenant->email,
                 'phone_number' => $tenant->phone_number,
                 'gender' => $tenant->gender,
+                'start_date' => $tenant->start_date?->format('Y-m-d'),
+                'end_date' => $tenant->end_date?->format('Y-m-d'),
                 'rooms' => $tenant->rooms->map(fn ($room) => [
                     'room_number' => $room->room_number,
                     'kost_name' => $room->roomCategory->kost->name,
@@ -75,6 +77,8 @@ class TenantController extends Controller
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'required|string|max:20',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $tenant = Tenant::create([
@@ -88,6 +92,8 @@ class TenantController extends Controller
             'gender' => $validated['gender'] ?? null,
             'address' => $validated['address'] ?? null,
             'phone_number' => $validated['phone_number'],
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
         ]);
 
         // Attach rooms via pivot
@@ -185,6 +191,8 @@ class TenantController extends Controller
         return Inertia::render('Management/Tenants/Form', [
             'tenant' => [
                 ...$tenant->only('id', 'email', 'name', 'nik', 'ktp_number', 'birth_place', 'birth_date', 'gender', 'address', 'phone_number'),
+                'start_date' => $tenant->start_date?->format('Y-m-d'),
+                'end_date' => $tenant->end_date?->format('Y-m-d'),
                 'room_ids' => $tenant->rooms->pluck('id')->toArray(),
             ],
             'rooms' => $rooms,
@@ -205,6 +213,8 @@ class TenantController extends Controller
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'required|string|max:20',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $oldRoomIds = $tenant->rooms->pluck('id')->toArray();
@@ -221,6 +231,8 @@ class TenantController extends Controller
             'gender' => $validated['gender'] ?? null,
             'address' => $validated['address'] ?? null,
             'phone_number' => $validated['phone_number'],
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
         ];
 
         if ($newRoomIds !== null) {

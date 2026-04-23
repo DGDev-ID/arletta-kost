@@ -23,6 +23,15 @@ interface BillItem {
     due_date: string | null;
 }
 
+interface SignedBillItem {
+    id: number;
+    room_number: string;
+    tenant_name: string;
+    start_date: string | null;
+    due_date: string | null;
+    signature: string | null;
+}
+
 interface PaginationLink {
     url: string | null;
     label: string;
@@ -41,6 +50,7 @@ interface Paginator<T> {
 
 const props = defineProps<{
     bills: Paginator<BillItem>;
+    signedBills: SignedBillItem[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -56,10 +66,12 @@ const selectedBill = ref<null | BillItem>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 let ctx: CanvasRenderingContext2D | null = null;
 const drawing = ref(false);
+const agreedToTerms = ref(false);
 const form = useForm({ signature: '' });
 
 const openModal = async (bill: BillItem) => {
     selectedBill.value = bill;
+    agreedToTerms.value = false;
     showModal.value = true;
     await nextTick();
     initCanvas();
@@ -138,6 +150,7 @@ const submitSignature = () => {
 
                 <Heading title="Signatures" description="Bills berstatus paid yang belum ditandatangani." />
 
+                <!-- Table: Pending Signatures -->
                 <div class="overflow-hidden rounded-lg border">
                     <table class="w-full text-sm">
                         <thead class="border-b bg-muted/50">
@@ -168,6 +181,46 @@ const submitSignature = () => {
                     </table>
                 </div>
 
+                <Pagination :meta="bills" />
+
+                <!-- Table: Signed Bills -->
+                <div class="mt-8">
+                    <Heading title="Daftar Tenant yang Sudah Menandatangani"
+                             description="Riwayat bill yang telah berhasil ditandatangani." variant="small" />
+
+                    <div class="overflow-hidden rounded-lg border mt-4">
+                        <table class="w-full text-sm">
+                            <thead class="border-b bg-muted/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-medium">#</th>
+                                    <th class="px-4 py-3 text-left font-medium">Room</th>
+                                    <th class="px-4 py-3 text-left font-medium">Tenant</th>
+                                    <th class="px-4 py-3 text-left font-medium">Start</th>
+                                    <th class="px-4 py-3 text-left font-medium">Due</th>
+                                    <th class="px-4 py-3 text-center font-medium">TTD</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="signedBills.length === 0">
+                                    <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada tenant yang menandatangani.</td>
+                                </tr>
+                                <tr v-for="(sb, idx) in signedBills" :key="sb.id" class="border-b last:border-0">
+                                    <td class="px-4 py-3 font-medium">{{ idx + 1 }}</td>
+                                    <td class="px-4 py-3">{{ sb.room_number }}</td>
+                                    <td class="px-4 py-3">{{ sb.tenant_name }}</td>
+                                    <td class="px-4 py-3 text-xs">{{ formatDate(sb.start_date) }}</td>
+                                    <td class="px-4 py-3 text-xs">{{ formatDate(sb.due_date) }}</td>
+                                    <td class="px-4 py-3 text-center">
+                                        <span class="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                            Sudah TTD
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Signature Modal -->
                 <Dialog v-model:open="showModal">
                     <DialogContent class="sm:max-w-3xl">
@@ -175,10 +228,39 @@ const submitSignature = () => {
                             <DialogTitle>Tanda Tangan</DialogTitle>
                         </DialogHeader>
 
-                        <div class="p-4">
-                            <p class="text-sm text-muted-foreground mb-2">Gambar tanda tangan pada area di bawah, lalu klik Save.</p>
-                            <div class="w-full overflow-auto">
-                                <canvas ref="canvasRef" class="w-full rounded border bg-white"></canvas>
+                        <div class="p-4 space-y-4">
+                            <!-- Syarat & Ketentuan -->
+                            <div class="rounded-lg border bg-muted/30 p-4 max-h-48 overflow-y-auto">
+                                <h4 class="text-sm font-semibold mb-2">Syarat dan Ketentuan</h4>
+                                <ol class="list-decimal list-inside space-y-1.5 text-xs text-muted-foreground leading-relaxed">
+                                    <li>Penyewa wajib menjaga kebersihan, ketertiban, dan keamanan lingkungan kost.</li>
+                                    <li>Pembayaran sewa dilakukan sesuai dengan periode yang telah disepakati dan tidak dapat dikembalikan (non-refundable) kecuali disetujui pihak manajemen.</li>
+                                    <li>Penyewa dilarang merusak fasilitas kost. Segala kerusakan akibat kelalaian penyewa menjadi tanggung jawab penyewa.</li>
+                                    <li>Penyewa tidak diperkenankan memindahkan hak sewa kepada pihak lain tanpa persetujuan tertulis dari manajemen.</li>
+                                    <li>Manajemen berhak melakukan inspeksi kamar dengan pemberitahuan terlebih dahulu.</li>
+                                    <li>Pelanggaran terhadap syarat dan ketentuan dapat mengakibatkan pemutusan kontrak sewa tanpa pengembalian dana.</li>
+                                    <li>Dengan menandatangani dokumen ini, penyewa menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang berlaku.</li>
+                                </ol>
+                            </div>
+
+                            <!-- Checkbox Persetujuan -->
+                            <label class="flex items-start gap-3 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    v-model="agreedToTerms"
+                                    class="mt-0.5 h-4 w-4 rounded border-input"
+                                />
+                                <span class="text-sm">
+                                    Saya telah membaca dan <strong>menyetujui Syarat dan Ketentuan</strong> di atas.
+                                </span>
+                            </label>
+
+                            <!-- Canvas -->
+                            <div>
+                                <p class="text-sm text-muted-foreground mb-2">Gambar tanda tangan pada area di bawah, lalu klik Save.</p>
+                                <div class="w-full overflow-auto">
+                                    <canvas ref="canvasRef" class="w-full rounded border bg-white"></canvas>
+                                </div>
                             </div>
                         </div>
 
@@ -187,12 +269,16 @@ const submitSignature = () => {
                                 <Button variant="secondary">Batal</Button>
                             </DialogClose>
                             <Button variant="ghost" @click="clearCanvas">Clear</Button>
-                            <Button @click="submitSignature" :disabled="form.processing">Save</Button>
+                            <Button
+                                @click="submitSignature"
+                                :disabled="form.processing || !agreedToTerms"
+                                :title="!agreedToTerms ? 'Anda harus menyetujui Syarat dan Ketentuan terlebih dahulu' : ''"
+                            >
+                                Save
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-
-                <Pagination :meta="bills" />
 
             </div>
         </div>

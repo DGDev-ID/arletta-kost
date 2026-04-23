@@ -87,10 +87,12 @@ const submit = () => {
     <Head :title="isEdit ? 'Edit User' : 'Tambah User'" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
+        <div class="min-h-screen bg-muted/40">
+            <div class="max-w-3xl mx-auto px-16 py-8">
+                <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
-            <Heading :title="isEdit ? 'Edit User' : 'Tambah User'" />
+            <Heading :title="isEdit ? 'Edit User' : 'Tambah User'"
+            description="Tambahkan atau edit data user sesuai kebutuhan" />
 
             <div class="mx-auto w-full max-w-xl">
                 <form @submit.prevent="submit" class="space-y-6">
@@ -168,6 +170,7 @@ const submit = () => {
                         </Button>
                     </div>
                 </form>
+            </div>
             </div>
             </div>
         </div>
