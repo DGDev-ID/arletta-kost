@@ -16,7 +16,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [env('LANDING_URL', 'http://localhost:3000'), env('APP_URL', 'http://localhost:8000'), 'http://localhost:5173', 'http://localhost:5174'],
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 
