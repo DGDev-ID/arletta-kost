@@ -10,30 +10,19 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
 import { computed } from 'vue';
 
-interface RoomOption {
-    id: number;
-    room_number: string;
-    kost_name: string;
-}
-
 interface TenantData {
     id: number;
-    room_ids: number[];
     email: string;
     name: string;
     nik: string | null;
-    ktp_number: string | null;
     birth_place: string | null;
     birth_date: string | null;
     gender: string | null;
     address: string | null;
     phone_number: string;
-    start_date: string | null;
-    end_date: string | null;
 }
 
 const props = defineProps<{
-    rooms: RoomOption[];
     tenant?: TenantData;
 }>();
 
@@ -46,28 +35,15 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const form = useForm({
-    room_ids: props.tenant?.room_ids ?? [] as number[],
     email: props.tenant?.email ?? '',
     name: props.tenant?.name ?? '',
     nik: props.tenant?.nik ?? '',
-    ktp_number: props.tenant?.ktp_number ?? '',
     birth_place: props.tenant?.birth_place ?? '',
     birth_date: props.tenant?.birth_date ?? '',
     gender: props.tenant?.gender ?? '',
     address: props.tenant?.address ?? '',
     phone_number: props.tenant?.phone_number ?? '',
-    start_date: props.tenant?.start_date ?? '',
-    end_date: props.tenant?.end_date ?? '',
 });
-
-const toggleRoom = (roomId: number) => {
-    const idx = form.room_ids.indexOf(roomId);
-    if (idx === -1) {
-        form.room_ids.push(roomId);
-    } else {
-        form.room_ids.splice(idx, 1);
-    }
-};
 
 const submit = () => {
     if (isEdit.value && props.tenant) {
@@ -138,32 +114,12 @@ const submit = () => {
 
                             <h3 class="text-lg font-semibold">User Detail</h3>
 
-                            <!-- ROOM -->
-                            <div v-if="!isEdit" class="grid gap-2">
-                                <Label>Rooms</Label>
-                                <div class="max-h-40 overflow-y-auto border p-2 rounded">
-                                    <label v-for="room in rooms" :key="room.id" class="flex gap-2">
-                                        <input
-                                            type="checkbox"
-                                            :checked="form.room_ids.includes(room.id)"
-                                            @change="toggleRoom(room.id)"
-                                        />
-                                        {{ room.kost_name }} - {{ room.room_number }}
-                                    </label>
-                                </div>
-                            </div>
-
                             <!-- GRID 2 COL -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                                 <div>
                                     <Label>NIK</Label>
                                     <Input v-model="form.nik" />
-                                </div>
-
-                                <div>
-                                    <Label>KTP</Label>
-                                    <Input v-model="form.ktp_number" />
                                 </div>
 
                                 <div>
@@ -185,23 +141,6 @@ const submit = () => {
                                     </select>
                                 </div>
 
-                                <div>
-                                    <Label>No HP</Label>
-                                    <Input v-model="form.phone_number" />
-                                </div>
-
-                            </div>
-
-                            <!-- BOOKING -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label>Tanggal Mulai</Label>
-                                    <Input type="date" v-model="form.start_date" />
-                                </div>
-                                <div>
-                                    <Label>Tanggal Selesai</Label>
-                                    <Input type="date" v-model="form.end_date" />
-                                </div>
                             </div>
 
                             <!-- ADDRESS -->

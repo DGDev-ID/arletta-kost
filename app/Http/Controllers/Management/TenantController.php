@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
+use App\Models\RoomCategory;
 use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,58 +50,32 @@ class TenantController extends Controller
 
     public function create(): Response
     {
-        $rooms = Room::with('roomCategory.kost')
-            ->where('status', 'available')
-            ->get()
-            ->map(fn (Room $room) => [
-                'id' => $room->id,
-                'room_number' => $room->room_number,
-                'kost_name' => $room->roomCategory->kost->name,
-            ]);
-
-        return Inertia::render('Management/Tenants/Form', [
-            'rooms' => $rooms,
-        ]);
+        return Inertia::render('Management/Tenants/Form');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'room_ids' => 'required|array|min:1',
-            'room_ids.*' => 'exists:rooms,id',
             'email' => 'required|email|max:255',
             'name' => 'required|string|max:255',
             'nik' => 'nullable|string|max:50',
-            'ktp_number' => 'nullable|string|max:50',
             'birth_place' => 'nullable|string|max:255',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'required|string|max:20',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        $tenant = Tenant::create([
-            'room_id' => $validated['room_ids'][0] ?? null,
+        Tenant::create([
             'email' => $validated['email'],
             'name' => $validated['name'],
             'nik' => $validated['nik'] ?? null,
-            'ktp_number' => $validated['ktp_number'] ?? null,
             'birth_place' => $validated['birth_place'] ?? null,
             'birth_date' => $validated['birth_date'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'address' => $validated['address'] ?? null,
             'phone_number' => $validated['phone_number'],
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
         ]);
-
-        // Attach rooms via pivot
-        $tenant->rooms()->sync($validated['room_ids']);
-
-        // Mark rooms as occupied
-        Room::whereIn('id', $validated['room_ids'])->update(['status' => 'occupied']);
 
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil ditambahkan.');
     }
@@ -115,7 +90,6 @@ class TenantController extends Controller
             'email' => $tenant->email,
             'phone_number' => $tenant->phone_number,
             'nik' => $tenant->nik,
-            'ktp_number' => $tenant->ktp_number,
             'birth_place' => $tenant->birth_place,
             'birth_date' => $tenant->birth_date?->format('Y-m-d'),
             'gender' => $tenant->gender,
@@ -129,7 +103,7 @@ class TenantController extends Controller
             ])->toArray(),
         ];
 
-        // Bills: only unpaid/pending + manual payment_type
+        // Bills
         $bills = $tenant->bills()
             ->with(['transactions'])
             ->latest()
@@ -150,113 +124,73 @@ class TenantController extends Controller
                 ])->toArray(),
             ]);
 
-        // Get pricings from all rooms' categories
-        $pricings = collect();
-        foreach ($tenant->rooms as $room) {
-            $roomPricings = $room->roomCategory->pricings()
-                ->get()
-                ->map(fn ($p) => [
+        // Categories with their pricings (for the Create Bill form)
+        $categories = RoomCategory::with(['kost', 'pricings'])
+            ->whereHas('rooms', fn ($q) => $q->where('status', 'available'))
+            ->get()
+            ->map(fn (RoomCategory $cat) => [
+                'id' => $cat->id,
+                'name' => $cat->name,
+                'kost_name' => $cat->kost->name,
+                'pricings' => $cat->pricings->map(fn ($p) => [
                     'id' => $p->id,
                     'duration_days' => $p->duration_days,
                     'price' => (float) $p->price,
-                    'room_id' => $room->id,
-                    'room_number' => $room->room_number,
-                ]);
-            $pricings = $pricings->merge($roomPricings);
-        }
+                ])->toArray(),
+            ]);
 
-        return Inertia::render('Management/Tenants/Show', [
-            'tenant' => $tenantData,
-            'bills' => $bills,
-            'pricings' => $pricings->values(),
-        ]);
-    }
-
-    public function edit(Tenant $tenant): Response
-    {
-        $tenant->load('rooms');
-
-        $rooms = Room::with('roomCategory.kost')
-            ->where(function ($q) use ($tenant) {
-                $q->where('status', 'available')
-                    ->orWhereIn('id', $tenant->rooms->pluck('id'));
-            })
+        // Available rooms (status = available) for the Create Bill form
+        $availableRooms = Room::with('roomCategory.kost')
+            ->where('status', 'available')
             ->get()
             ->map(fn (Room $room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,
                 'kost_name' => $room->roomCategory->kost->name,
+                'category_id' => $room->room_category_id,
+                'category_name' => $room->roomCategory->name,
             ]);
 
+        return Inertia::render('Management/Tenants/Show', [
+            'tenant' => $tenantData,
+            'bills' => $bills,
+            'categories' => $categories,
+            'availableRooms' => $availableRooms,
+        ]);
+    }
+
+    public function edit(Tenant $tenant): Response
+    {
         return Inertia::render('Management/Tenants/Form', [
             'tenant' => [
-                ...$tenant->only('id', 'email', 'name', 'nik', 'ktp_number', 'birth_place', 'birth_date', 'gender', 'address', 'phone_number'),
-                'start_date' => $tenant->start_date?->format('Y-m-d'),
-                'end_date' => $tenant->end_date?->format('Y-m-d'),
-                'room_ids' => $tenant->rooms->pluck('id')->toArray(),
+                ...$tenant->only('id', 'email', 'name', 'nik', 'birth_place', 'birth_date', 'gender', 'address', 'phone_number'),
             ],
-            'rooms' => $rooms,
         ]);
     }
 
     public function update(Request $request, Tenant $tenant): RedirectResponse
     {
         $validated = $request->validate([
-            'room_ids' => 'nullable|array',
-            'room_ids.*' => 'exists:rooms,id',
             'email' => 'required|email|max:255',
             'name' => 'required|string|max:255',
             'nik' => 'nullable|string|max:50',
-            'ktp_number' => 'nullable|string|max:50',
             'birth_place' => 'nullable|string|max:255',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string',
             'phone_number' => 'required|string|max:20',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        $oldRoomIds = $tenant->rooms->pluck('id')->toArray();
-        $newRoomIds = $validated['room_ids'] ?? null;
-
-        // Prepare update payload; only change room_id if rooms submitted
-        $updateData = [
+        $tenant->update([
             'email' => $validated['email'],
             'name' => $validated['name'],
             'nik' => $validated['nik'] ?? null,
-            'ktp_number' => $validated['ktp_number'] ?? null,
             'birth_place' => $validated['birth_place'] ?? null,
             'birth_date' => $validated['birth_date'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'address' => $validated['address'] ?? null,
             'phone_number' => $validated['phone_number'],
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
-        ];
-
-        if ($newRoomIds !== null) {
-            $updateData['room_id'] = $newRoomIds[0] ?? null;
-        }
-
-        $tenant->update($updateData);
-
-        // If room_ids present in request, sync and update room statuses
-        if ($newRoomIds !== null) {
-            $tenant->rooms()->sync($newRoomIds);
-
-            // Free removed rooms
-            $removedRoomIds = array_diff($oldRoomIds, $newRoomIds);
-            if (! empty($removedRoomIds)) {
-                Room::whereIn('id', $removedRoomIds)->update(['status' => 'available']);
-            }
-
-            // Mark new rooms as occupied
-            $addedRoomIds = array_diff($newRoomIds, $oldRoomIds);
-            if (! empty($addedRoomIds)) {
-                Room::whereIn('id', $addedRoomIds)->update(['status' => 'occupied']);
-            }
-        }
+        ]);
 
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil diperbarui.');
     }

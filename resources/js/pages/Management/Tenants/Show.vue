@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import Heading from '@/components/Heading.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -34,7 +34,6 @@ interface TenantData {
     email: string;
     phone_number: string;
     nik: string | null;
-    ktp_number: string | null;
     birth_place: string | null;
     birth_date: string | null;
     gender: string | null;
@@ -64,14 +63,28 @@ interface PricingItem {
     id: number;
     duration_days: number;
     price: number;
-    room_id: number;
+}
+
+interface CategoryItem {
+    id: number;
+    name: string;
+    kost_name: string;
+    pricings: PricingItem[];
+}
+
+interface AvailableRoom {
+    id: number;
     room_number: string;
+    kost_name: string;
+    category_id: number;
+    category_name: string;
 }
 
 const props = defineProps<{
     tenant: TenantData;
     bills: BillItem[];
-    pricings: PricingItem[];
+    categories: CategoryItem[];
+    availableRooms: AvailableRoom[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -92,6 +105,7 @@ const showBillDialog = ref(false);
 
 const billForm = useForm({
     tenant_id: props.tenant.id,
+    category_id: '' as number | '',
     room_id: '' as number | '',
     pricing_id: '' as number | '',
     total_price: 0,
@@ -99,15 +113,22 @@ const billForm = useForm({
     due_date: '',
 });
 
-// Pricings filtered by selected room
+// Rooms filtered by selected category
+const filteredRooms = computed(() => {
+    if (!billForm.category_id) return [];
+    return props.availableRooms.filter(r => r.category_id === billForm.category_id);
+});
+
+// Pricings filtered by selected category
 const filteredPricings = computed(() => {
-    if (!billForm.room_id) return [];
-    return props.pricings.filter(p => p.room_id === billForm.room_id);
+    if (!billForm.category_id) return [];
+    const cat = props.categories.find(c => c.id === billForm.category_id);
+    return cat?.pricings ?? [];
 });
 
 const selectedPricing = computed(() => {
     if (!billForm.pricing_id) return null;
-    return props.pricings.find((p) => p.id === billForm.pricing_id) ?? null;
+    return filteredPricings.value.find((p) => p.id === billForm.pricing_id) ?? null;
 });
 
 // Auto-calculate total_price and due_date when pricing or start_date change
@@ -123,6 +144,14 @@ watch(
     },
 );
 
+// Reset room and pricing when category changes
+watch(() => billForm.category_id, () => {
+    billForm.room_id = '';
+    billForm.pricing_id = '';
+    billForm.total_price = 0;
+    billForm.due_date = '';
+});
+
 // Reset pricing when room changes
 watch(() => billForm.room_id, () => {
     billForm.pricing_id = '';
@@ -135,7 +164,7 @@ const submitBill = () => {
         preserveScroll: true,
         onSuccess: () => {
             showBillDialog.value = false;
-            billForm.reset('room_id', 'pricing_id', 'total_price', 'start_date', 'due_date');
+            billForm.reset('category_id', 'room_id', 'pricing_id', 'total_price', 'start_date', 'due_date');
         },
     });
 };
@@ -290,10 +319,6 @@ const allBills = computed(() => props.bills);
                         <p class="text-sm font-medium">{{ tenant.nik ?? '-' }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-muted-foreground">No. KTP</p>
-                        <p class="text-sm font-medium">{{ tenant.ktp_number ?? '-' }}</p>
-                    </div>
-                    <div>
                         <p class="text-xs text-muted-foreground">Tempat, Tanggal Lahir</p>
                         <p class="text-sm font-medium">{{ tenant.birth_place ?? '-' }}{{ tenant.birth_date ? `, ${tenant.birth_date}` : '' }}</p>
                     </div>
@@ -427,16 +452,32 @@ const allBills = computed(() => props.bills);
                 </DialogHeader>
 
                 <form @submit.prevent="submitBill" class="space-y-4">
-                    <!-- Room selection -->
+                    <!-- Category selection -->
+                    <div class="grid gap-2">
+                        <Label for="bill_category_id">Kategori</Label>
+                        <select
+                            id="bill_category_id"
+                            v-model="billForm.category_id"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="" disabled>Pilih kategori...</option>
+                            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                                {{ cat.kost_name }} — {{ cat.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Room selection (filtered by category) -->
                     <div class="grid gap-2">
                         <Label for="bill_room_id">Room</Label>
                         <select
                             id="bill_room_id"
                             v-model="billForm.room_id"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            :disabled="!billForm.category_id"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                         >
                             <option value="" disabled>Pilih room...</option>
-                            <option v-for="room in tenant.rooms" :key="room.id" :value="room.id">
+                            <option v-for="room in filteredRooms" :key="room.id" :value="room.id">
                                 {{ room.kost_name }} — {{ room.room_number }}
                             </option>
                         </select>
@@ -448,7 +489,7 @@ const allBills = computed(() => props.bills);
                         <select
                             id="pricing_id"
                             v-model="billForm.pricing_id"
-                            :disabled="!billForm.room_id"
+                            :disabled="!billForm.category_id"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                         >
                             <option value="" disabled>Pilih durasi...</option>

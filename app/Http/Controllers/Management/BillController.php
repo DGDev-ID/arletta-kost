@@ -26,6 +26,13 @@ class BillController extends Controller
 
         Bill::create($validated);
 
+        // Attach the room to the tenant (if not already attached) and mark as occupied
+        $tenant = \App\Models\Tenant::find($validated['tenant_id']);
+        if (! $tenant->rooms()->where('rooms.id', $validated['room_id'])->exists()) {
+            $tenant->rooms()->attach($validated['room_id']);
+        }
+        \App\Models\Room::where('id', $validated['room_id'])->update(['status' => 'occupied']);
+
         return back()->with('success', 'Bill berhasil dibuat.');
     }
 

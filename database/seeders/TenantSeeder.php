@@ -20,7 +20,6 @@ class TenantSeeder extends Seeder
                 'email' => $faker->unique()->safeEmail(),
                 'name' => $faker->name(),
                 'nik' => $faker->numerify('################'),
-                'ktp_number' => $faker->numerify('################'),
                 'birth_place' => $faker->city(),
                 'birth_date' => $faker->dateTimeBetween('-35 years', '-18 years')->format('Y-m-d'),
                 'gender' => $faker->randomElement(['male', 'female']),

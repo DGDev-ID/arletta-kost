@@ -14,7 +14,6 @@ class Tenant extends Model
         'email',
         'name',
         'nik',
-        'ktp_number',
         'birth_place',
         'birth_date',
         'gender',
