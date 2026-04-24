@@ -470,7 +470,7 @@ const allBills = computed(() => props.bills);
                                     <td class="px-4 py-3">{{ bill.due_date }}</td>
                                     <td class="px-4 py-3">
                                         <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                            {{ bill.status }}
+                                            {{ bill.status }} <span v-if="bill.status === 'unpaid' && bill.transactions.some(t => t.status === 'failed')"> (Failed Transaction)</span>
                                         </span>
                                     </td>
                                     <!-- <td class="px-4 py-3 text-right">
