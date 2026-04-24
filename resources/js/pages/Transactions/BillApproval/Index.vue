@@ -90,8 +90,8 @@ const proceedAction = () => {
     });
 };
 
-const showBill = (tenantId: number) => {
-    router.visit(route('management.tenants.show', tenantId));
+const showBill = (billId: number) => {
+    router.visit(route('transactions.bill-approval.show', billId));
 };
 </script>
 
@@ -115,7 +115,7 @@ const showBill = (tenantId: number) => {
                                 <th class="px-4 py-3 text-left font-medium">Start</th>
                                 <th class="px-4 py-3 text-left font-medium">Due</th>
                                 <th class="px-4 py-3 text-left font-medium">Total</th>
-                                <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                                <th class="px-4 py-3 text-center font-medium">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -132,7 +132,7 @@ const showBill = (tenantId: number) => {
                                 <td class="px-4 py-3">{{ formatCurrency(b.total_price) }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex justify-end gap-1">
-                                        <Button variant="outline" size="sm" class="h-7 text-xs" @click="showBill(b.tenant_id)">
+                                        <Button variant="outline" size="sm" class="h-7 text-xs" @click="showBill(b.id)">
                                             <Eye class="mr-1 h-3 w-3" />
                                             Show
                                         </Button>
@@ -167,7 +167,7 @@ const showBill = (tenantId: number) => {
                                 <th class="px-4 py-3 text-left font-medium">Due</th>
                                 <th class="px-4 py-3 text-left font-medium">Total</th>
                                 <th class="px-4 py-3 text-left font-medium">Status</th>
-                                <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                                <th class="px-4 py-3 text-center font-medium">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -189,7 +189,7 @@ const showBill = (tenantId: number) => {
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex justify-end gap-1">
-                                        <Button variant="outline" size="sm" class="h-7 text-xs" @click="showBill(b.tenant_id)">
+                                        <Button variant="outline" size="sm" class="h-7 text-xs" @click="showBill(b.id)">
                                             <Eye class="mr-1 h-3 w-3" />
                                             Show
                                         </Button>

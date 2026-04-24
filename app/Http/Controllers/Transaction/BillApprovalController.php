@@ -59,4 +59,62 @@ class BillApprovalController extends Controller
             'historyBills' => $historyBills,
         ]);
     }
+
+    public function show(Bill $bill): Response
+    {
+        $bill->load(['tenant', 'room.roomCategory.kost', 'transactions.details']);
+
+        $data = [
+            'id' => $bill->id,
+            'total_price' => (float) $bill->total_price,
+            'start_date' => $bill->start_date?->format('d-m-Y'),
+            'due_date' => $bill->due_date?->format('d-m-Y'),
+            'status' => $bill->status,
+        ];
+
+        $tenant = null;
+        if ($bill->tenant) {
+            $tenant = [
+                'id' => $bill->tenant->id,
+                'name' => $bill->tenant->name,
+                'email' => $bill->tenant->email,
+                'phone_number' => $bill->tenant->phone_number,
+                'nik' => $bill->tenant->nik ?? '-',
+                'address' => $bill->tenant->address ?? '-',
+            ];
+        }
+
+        $room = null;
+        if ($bill->room) {
+            $room = [
+                'id' => $bill->room->id,
+                'room_number' => $bill->room->room_number,
+                'kost_name' => $bill->room->roomCategory->kost->name ?? '-',
+                'category_name' => $bill->room->roomCategory->name ?? '-',
+            ];
+        }
+
+        $transactions = $bill->transactions->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'order_id' => $t->order_id,
+                'payment_type' => $t->payment_type,
+                'total_price' => (float) $t->total_price,
+                'status' => $t->status,
+                'created_at' => $t->created_at->format('d-m-Y H:i'),
+                'details' => $t->details->map(fn($d) => [
+                    'id' => $d->id,
+                    'status' => $d->status,
+                    'created_at' => $d->created_at->format('d-m-Y H:i'),
+                ])
+            ];
+        });
+
+        return Inertia::render('Transactions/BillApproval/Show', [
+            'bill' => $data,
+            'tenant' => $tenant,
+            'room' => $room,
+            'transactions' => $transactions,
+        ]);
+    }
 }

@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->prefix('management')->name('management.
 Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transactions.')->group(function () {
     // Bill approval management
     Route::get('bill-approval', [BillApprovalController::class, 'index'])->name('bill-approval.index');
+    Route::get('bill-approval/{bill}', [BillApprovalController::class, 'show'])->name('bill-approval.show');
 
     // Refund request management
     Route::get('refund-requests', [RefundRequestController::class, 'index'])->name('refund-requests.index');
