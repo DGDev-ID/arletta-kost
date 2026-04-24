@@ -295,9 +295,9 @@ const submit = () => {
                                 <Input v-model="detail.detail" :placeholder="`Detail ${idx + 1}, misal: AC, WiFi`" />
                                 <InputError :message="errors[`details.${idx}.detail`]" />
                             </div>
-                            <div class="w-32">
+                            <!-- <div class="w-32">
                                 <Input v-model="detail.icon" placeholder="Icon (opsional)" />
-                            </div>
+                            </div> -->
                             <Button type="button" variant="ghost" size="icon" class="h-9 w-9 mt-0.5 text-destructive" @click="removeDetail(idx)">
                                 <Trash2 class="h-4 w-4" />
                             </Button>

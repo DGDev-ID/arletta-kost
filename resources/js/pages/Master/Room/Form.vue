@@ -130,12 +130,12 @@ watch(showCategoryModal, (open) => {
                     <div class="grid gap-2">
                         <div class="flex items-center justify-between">
                             <Label for="room_category_id">Kategori Kamar</Label>
-                            <Button type="button" variant="link" size="sm" class="h-auto p-0 text-xs" @click="showCategoryModal = true">
+                            <!-- <Button type="button" variant="link" size="sm" class="h-auto p-0 text-xs" @click="showCategoryModal = true">
                                 <Settings class="mr-1 h-3 w-3" />
                                 Manage Category
-                            </Button>
+                            </Button> -->
                         </div>
-                        <Input v-model="categorySearch" placeholder="Cari kategori..." class="mb-1" />
+                        <!-- <Input v-model="categorySearch" placeholder="Cari kategori..." class="mb-1" /> -->
                         <select
                             id="room_category_id"
                             v-model="form.room_category_id"
@@ -180,7 +180,7 @@ watch(showCategoryModal, (open) => {
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             <option value="available">Available</option>
-                            <option value="occupied">Occupied</option>
+                            <!-- <option value="occupied">Occupied</option> -->
                             <option value="maintenance">Maintenance</option>
                         </select>
                         <InputError :message="form.errors.status" />
