@@ -99,13 +99,26 @@ class TenantController extends Controller
             'birth_date' => $tenant->birth_date?->format('Y-m-d'),
             'gender' => $tenant->gender,
             'address' => $tenant->address,
-            'rooms' => $tenant->rooms->map(fn($room) => [
-                'id' => $room->id,
-                'room_number' => $room->room_number,
-                'kost_name' => $room->roomCategory->kost->name,
-                'category_name' => $room->roomCategory->name,
-                'status' => $room->status,
-            ])->toArray(),
+            'rooms' => $tenant->bills
+                ->filter(function ($bill) {
+                    $today = now()->toDateString();
+
+                    return $bill->status === 'paid'
+                        && $today >= $bill->start_date
+                        && $today <= $bill->end_date;
+                })
+                ->map(fn($bill) => [
+                    'id' => $bill->room->id,
+                    'room_number' => $bill->room->room_number,
+                    'kost_name' => $bill->room->roomCategory->kost->name,
+                    'category_name' => $bill->room->roomCategory->name,
+                    'bill_id' => $bill->id,
+                    'start_date' => $bill->start_date,
+                    'end_date' => $bill->end_date,
+                    'status' => $bill->status,
+                ])
+                ->values()
+                ->toArray(),
         ];
 
         // Bills

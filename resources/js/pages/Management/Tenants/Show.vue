@@ -26,6 +26,8 @@ interface RoomInfo {
     kost_name: string;
     category_name: string;
     status: string;
+    start_date: string;
+    end_date: string;
 }
 
 interface TenantData {
@@ -379,7 +381,7 @@ const allBills = computed(() => props.bills);
                         <div class="flex items-center justify-between">
                             <p class="text-sm font-semibold">{{ room.room_number }}</p>
                             <span :class="roomStatusBadge(room.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                {{ room.status }}
+                                {{ room.start_date }} - {{ room.end_date }}
                             </span>
                         </div>
                         <p class="text-xs text-muted-foreground">{{ room.kost_name }}</p>
