@@ -33,11 +33,69 @@ class S3Helper
     public static function storeFileTemp(UploadedFile $file): string
     {
         $uuid = (string) Str::uuid();
+        $mime = $file->getMimeType();
         $extension = $file->getClientOriginalExtension();
-        $fileName = "{$uuid}.{$extension}";
 
-        Storage::disk('local')->putFileAs('temp', $file, $fileName);
+        $isImage = str_starts_with($mime, 'image/');
 
+        // Jika bukan gambar, simpan sesuai ekstensi aslinya
+        if (!$isImage) {
+            $fileName = "{$uuid}.{$extension}";
+            Storage::disk('local')->putFileAs('temp', $file, $fileName);
+
+            return $fileName;
+        }
+
+        // Jika gambar, proses konversi ke WebP
+        $fileName = "{$uuid}.webp";
+        $tempPath = storage_path("app/temp/{$fileName}");
+
+        if (!is_dir(dirname($tempPath))) {
+            mkdir(dirname($tempPath), 0755, true);
+        }
+
+        switch ($mime) {
+            case 'image/jpeg':
+            case 'image/jpg':
+                $image = imagecreatefromjpeg($file->getRealPath());
+                break;
+
+            case 'image/png':
+                $image = imagecreatefrompng($file->getRealPath());
+                imagepalettetotruecolor($image);
+                imagealphablending($image, true);
+                imagesavealpha($image, true);
+                break;
+
+            case 'image/gif':
+                $image = imagecreatefromgif($file->getRealPath());
+                break;
+
+            case 'image/webp':
+                // Jika sudah webp, langsung simpan tanpa diconvert ulang
+                Storage::disk('local')->putFileAs('temp', $file, $fileName);
+                return $fileName;
+
+            default:
+                // Jika format gambar lain tidak tercover GD, simpan aslinya
+                $fileName = "{$uuid}.{$extension}";
+                Storage::disk('local')->putFileAs('temp', $file, $fileName);
+                return $fileName;
+        }
+
+        // Simpan gambar sebagai WebP dengan kualitas 80
+        imagewebp($image, $tempPath, 80);
+        imagedestroy($image);
+
+        // Pindahkan ke Storage Laravel agar tercatat di filesystem lokal
+        Storage::disk('local')->put(
+            "temp/{$fileName}",
+            file_get_contents($tempPath)
+        );
+
+        // Hapus file temporary asli buatan GD
+        unlink($tempPath);
+        
         return $fileName;
     }
 
