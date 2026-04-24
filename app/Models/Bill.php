@@ -21,8 +21,8 @@ class Bill extends Model
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'due_date' => 'date',
+            'start_date' => 'datetime',
+            'due_date' => 'datetime',
             'total_price' => 'decimal:2',
         ];
     }

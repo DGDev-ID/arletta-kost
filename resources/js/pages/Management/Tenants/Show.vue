@@ -26,6 +26,8 @@ interface RoomInfo {
     kost_name: string;
     category_name: string;
     status: string;
+    start_date: string;
+    end_date: string;
 }
 
 interface TenantData {
@@ -277,9 +279,17 @@ const formatDuration = (days: number) => {
 // Filtered bills: show unpaid/pending with manual payment_type
 const manualBills = computed(() => {
     return props.bills.filter(bill => {
-        const isUnpaidOrPending = bill.status === 'unpaid' || bill.status === 'pending';
-        const hasManualTransaction = bill.transactions.some(t => t.payment_type === 'manual');
-        return isUnpaidOrPending && hasManualTransaction;
+        const isUnpaidOrPending = bill.status === 'unpaid';
+
+        const hasManualTransaction = bill.transactions.some(
+            t => t.payment_type === 'manual'
+        );
+
+        const hasNoFailedTransaction = !bill.transactions.some(
+            t => t.status === 'failed'
+        );
+
+        return isUnpaidOrPending && hasManualTransaction && hasNoFailedTransaction;
     });
 });
 
@@ -371,7 +381,7 @@ const allBills = computed(() => props.bills);
                         <div class="flex items-center justify-between">
                             <p class="text-sm font-semibold">{{ room.room_number }}</p>
                             <span :class="roomStatusBadge(room.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                {{ room.status }}
+                                {{ room.start_date }} sampai {{ room.end_date }}
                             </span>
                         </div>
                         <p class="text-xs text-muted-foreground">{{ room.kost_name }}</p>
@@ -462,7 +472,7 @@ const allBills = computed(() => props.bills);
                                     <td class="px-4 py-3">{{ bill.due_date }}</td>
                                     <td class="px-4 py-3">
                                         <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                            {{ bill.status }}
+                                            {{ bill.status }} <span v-if="bill.status === 'unpaid' && bill.transactions.some(t => t.status === 'failed')"> (Failed Transaction)</span>
                                         </span>
                                     </td>
                                     <!-- <td class="px-4 py-3 text-right">
