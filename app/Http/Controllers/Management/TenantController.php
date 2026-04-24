@@ -18,15 +18,15 @@ class TenantController extends Controller
         $search = $request->input('search', '');
 
         $tenants = Tenant::with(['rooms.roomCategory.kost', 'bills'])
-            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+            ->when($search, fn($q) => $q->where(function ($q2) use ($search) {
                 $q2->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('phone_number', 'like', "%{$search}%")
-                    ->orWhereHas('rooms', fn ($q3) => $q3->where('room_number', 'like', "%{$search}%"));
+                    ->orWhereHas('rooms', fn($q3) => $q3->where('room_number', 'like', "%{$search}%"));
             }))
             ->latest()
             ->paginate(15)
-            ->through(fn (Tenant $tenant) => [
+            ->through(fn(Tenant $tenant) => [
                 'id' => $tenant->id,
                 'name' => $tenant->name,
                 'email' => $tenant->email,
@@ -34,12 +34,17 @@ class TenantController extends Controller
                 'gender' => $tenant->gender,
                 'start_date' => $tenant->start_date?->format('Y-m-d'),
                 'end_date' => $tenant->end_date?->format('Y-m-d'),
-                'rooms' => $tenant->rooms->map(fn ($room) => [
+                'rooms' => $tenant->rooms->map(fn($room) => [
                     'room_number' => $room->room_number,
                     'kost_name' => $room->roomCategory->kost->name,
                 ])->toArray(),
                 'bills_count' => $tenant->bills->count(),
-                'unpaid_bills' => $tenant->bills->where('status', 'unpaid')->count(),
+                'unpaid_bills' => $tenant->bills()
+                    ->where('status', 'unpaid')
+                    ->whereHas('transaction', function ($q) {
+                        $q->where('status', '!=', 'failed');
+                    })
+                    ->count(),
             ]);
 
         return Inertia::render('Management/Tenants/Index', [
@@ -94,7 +99,7 @@ class TenantController extends Controller
             'birth_date' => $tenant->birth_date?->format('Y-m-d'),
             'gender' => $tenant->gender,
             'address' => $tenant->address,
-            'rooms' => $tenant->rooms->map(fn ($room) => [
+            'rooms' => $tenant->rooms->map(fn($room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,
                 'kost_name' => $room->roomCategory->kost->name,
@@ -108,14 +113,14 @@ class TenantController extends Controller
             ->with(['transactions'])
             ->latest()
             ->get()
-            ->map(fn ($bill) => [
+            ->map(fn($bill) => [
                 'id' => $bill->id,
                 'total_price' => (float) $bill->total_price,
                 'start_date' => $bill->start_date->format('Y-m-d'),
                 'due_date' => $bill->due_date->format('Y-m-d'),
                 'status' => $bill->status,
                 'room_id' => $bill->room_id,
-                'transactions' => $bill->transactions->map(fn ($t) => [
+                'transactions' => $bill->transactions->map(fn($t) => [
                     'id' => $t->id,
                     'order_id' => $t->order_id,
                     'payment_type' => $t->payment_type,
@@ -126,13 +131,13 @@ class TenantController extends Controller
 
         // Categories with their pricings (for the Create Bill form)
         $categories = RoomCategory::with(['kost', 'pricings'])
-            ->whereHas('rooms', fn ($q) => $q->where('status', '!=', 'maintenance'))
+            ->whereHas('rooms', fn($q) => $q->where('status', '!=', 'maintenance'))
             ->get()
-            ->map(fn (RoomCategory $cat) => [
+            ->map(fn(RoomCategory $cat) => [
                 'id' => $cat->id,
                 'name' => $cat->name,
                 'kost_name' => $cat->kost->name,
-                'pricings' => $cat->pricings->map(fn ($p) => [
+                'pricings' => $cat->pricings->map(fn($p) => [
                     'id' => $p->id,
                     'duration_days' => $p->duration_days,
                     'price' => (float) $p->price,
@@ -145,13 +150,13 @@ class TenantController extends Controller
         }])
             ->where('status', '!=', 'maintenance')
             ->get()
-            ->map(fn (Room $room) => [
+            ->map(fn(Room $room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,
                 'kost_name' => $room->roomCategory->kost->name,
                 'category_id' => $room->room_category_id,
                 'category_name' => $room->roomCategory->name,
-                'occupied_periods' => $room->bills->map(fn ($b) => [
+                'occupied_periods' => $room->bills->map(fn($b) => [
                     'start_date' => $b->start_date->format('Y-m-d'),
                     'due_date' => $b->due_date->format('Y-m-d'),
                 ])->toArray(),
