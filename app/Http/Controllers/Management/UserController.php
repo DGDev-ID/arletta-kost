@@ -42,7 +42,7 @@ class UserController extends Controller
 
     public function create(): Response
     {
-        $roles = Role::whereIn('name', ['superadmin', 'admin'])->select('id', 'name')->get();
+        $roles = Role::whereIn('name', ['superadmin', 'admin', 'owner'])->select('id', 'name')->get();
         $kosts = Kost::select('id', 'name')->get();
 
         return Inertia::render('Management/Users/Form', [
@@ -84,7 +84,7 @@ class UserController extends Controller
     {
         $user->load(['roles', 'administeredKosts']);
 
-        $roles = Role::whereIn('name', ['superadmin', 'admin'])->select('id', 'name')->get();
+        $roles = Role::whereIn('name', ['superadmin', 'admin', 'owner'])->select('id', 'name')->get();
         $kosts = Kost::select('id', 'name')->get();
 
         return Inertia::render('Management/Users/Form', [

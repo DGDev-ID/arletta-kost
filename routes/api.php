@@ -46,3 +46,6 @@ Route::get('rooms/{room}', [RoomApiController::class, 'show']);
 
 // ─── Inquiry (contact form) ─────────────────────────────────────────
 Route::post('inquiries', [InquiryApiController::class, 'store']);
+
+// ─── Bookings / Transactions ─────────────────────────────────────────
+Route::post('bookings', [\App\Http\Controllers\Api\BookingApiController::class, 'store']);
