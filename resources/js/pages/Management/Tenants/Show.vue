@@ -277,9 +277,17 @@ const formatDuration = (days: number) => {
 // Filtered bills: show unpaid/pending with manual payment_type
 const manualBills = computed(() => {
     return props.bills.filter(bill => {
-        const isUnpaidOrPending = bill.status === 'unpaid' || bill.status === 'pending';
-        const hasManualTransaction = bill.transactions.some(t => t.payment_type === 'manual');
-        return isUnpaidOrPending && hasManualTransaction;
+        const isUnpaidOrPending = bill.status === 'unpaid';
+
+        const hasManualTransaction = bill.transactions.some(
+            t => t.payment_type === 'manual'
+        );
+
+        const hasNoFailedTransaction = !bill.transactions.some(
+            t => t.status === 'failed'
+        );
+
+        return isUnpaidOrPending && hasManualTransaction && hasNoFailedTransaction;
     });
 });
 
