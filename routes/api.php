@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\BookingApiController;
 use App\Http\Controllers\Api\InquiryApiController;
 use App\Http\Controllers\Api\KostApiController;
+use App\Http\Controllers\Api\RefundApiController;
 use App\Http\Controllers\Api\RoomApiController;
 use App\Http\Controllers\Api\RoomCategoryApiController;
 use App\Http\Controllers\Api\SearchApiController;
@@ -48,4 +50,8 @@ Route::get('rooms/{room}', [RoomApiController::class, 'show']);
 Route::post('inquiries', [InquiryApiController::class, 'store']);
 
 // ─── Bookings / Transactions ─────────────────────────────────────────
-Route::post('bookings', [\App\Http\Controllers\Api\BookingApiController::class, 'store']);
+Route::post('bookings', [BookingApiController::class, 'store']);
+
+// ─── Refund Request ─────────────────────────────────────────────────
+Route::post('refund-request/check-transaction', [RefundApiController::class, 'checkTransaction']);
+Route::post('refund-request', [RefundApiController::class, 'submitRefund']);
