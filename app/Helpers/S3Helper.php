@@ -11,17 +11,17 @@ class S3Helper
 {
     protected static function baseUrl(): string
     {
-        return config('services.supabase.url') . '/storage/v1';
+        return config('services.supabase.url') ? config('services.supabase.url') . '/storage/v1' : '';
     }
 
     protected static function apiKey(): string
     {
-        return config('services.supabase.key');
+        return (string) config('services.supabase.key');
     }
 
     protected static function bucket(): string
     {
-        return config('services.supabase.bucket');
+        return (string) config('services.supabase.bucket');
     }
 
     /*
@@ -76,8 +76,13 @@ class S3Helper
         }
 
         $fileContent = Storage::disk('local')->get($localPath);
-
         $supabasePath = trim($path, '/') . '/' . $fileName;
+
+        if (!config('services.supabase.url') || !config('services.supabase.key')) {
+            // Fallback to local public storage
+            Storage::disk('public')->put($supabasePath, $fileContent);
+            return $supabasePath;
+        }
 
         $response = Http::withHeaders([
             'apikey'        => self::apiKey(),
@@ -98,6 +103,10 @@ class S3Helper
     public static function getUrlFileS3(string $path, string $fileName): string
     {
         $supabasePath = trim($path, '/') . '/' . $fileName;
+
+        if (!config('services.supabase.url') || !config('services.supabase.key')) {
+            return Storage::disk('public')->url($supabasePath);
+        }
 
         return config('services.supabase.url') .
             "/storage/v1/object/public/" .

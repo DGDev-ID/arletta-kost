@@ -24,14 +24,28 @@ class BillController extends Controller
 
         $validated['status'] = 'unpaid';
 
-        Bill::create($validated);
+        DB::transaction(function () use ($validated) {
+            $bill = Bill::create($validated);
 
-        // Attach the room to the tenant (if not already attached) and mark as occupied
-        $tenant = \App\Models\Tenant::find($validated['tenant_id']);
-        if (! $tenant->rooms()->where('rooms.id', $validated['room_id'])->exists()) {
-            $tenant->rooms()->attach($validated['room_id']);
-        }
-        \App\Models\Room::where('id', $validated['room_id'])->update(['status' => 'occupied']);
+            // Auto-create transaction with manual payment type
+            $transaction = $bill->transactions()->create([
+                'order_id' => 'BILL-' . $bill->id . '-' . now()->timestamp,
+                'payment_type' => 'manual',
+                'total_price' => $bill->total_price,
+                'status' => 'pending',
+            ]);
+
+            // Auto-create transaction detail
+            $transaction->details()->create([
+                'status' => 'pending',
+            ]);
+
+            // Attach the room to the tenant (if not already attached)
+            $tenant = \App\Models\Tenant::find($validated['tenant_id']);
+            if (! $tenant->rooms()->where('rooms.id', $validated['room_id'])->exists()) {
+                $tenant->rooms()->attach($validated['room_id']);
+            }
+        });
 
         return back()->with('success', 'Bill berhasil dibuat.');
     }

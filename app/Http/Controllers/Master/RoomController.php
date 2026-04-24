@@ -32,7 +32,11 @@ class RoomController extends Controller
             ->through(fn (Room $room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,
-                'status' => $room->status,
+                'status' => $room->bills()
+                    ->where('status', 'paid')
+                    ->where('start_date', '<=', now()->toDateString())
+                    ->where('due_date', '>=', now()->toDateString())
+                    ->exists() ? 'occupied' : $room->status,
                 'category_name' => $room->roomCategory->name,
                 'kost_name' => $room->roomCategory->kost->name,
                 'kost_id' => $room->roomCategory->kost->id,

@@ -72,12 +72,18 @@ interface CategoryItem {
     pricings: PricingItem[];
 }
 
+interface OccupiedPeriod {
+    start_date: string;
+    due_date: string;
+}
+
 interface AvailableRoom {
     id: number;
     room_number: string;
     kost_name: string;
     category_id: number;
     category_name: string;
+    occupied_periods: OccupiedPeriod[];
 }
 
 const props = defineProps<{
@@ -113,10 +119,21 @@ const billForm = useForm({
     due_date: '',
 });
 
-// Rooms filtered by selected category
+// Rooms filtered by selected category and date overlap
 const filteredRooms = computed(() => {
     if (!billForm.category_id) return [];
-    return props.availableRooms.filter(r => r.category_id === billForm.category_id);
+    return props.availableRooms.filter(r => {
+        if (r.category_id !== billForm.category_id) return false;
+
+        // Check date overlap if dates are selected
+        if (billForm.start_date && billForm.due_date) {
+            return !r.occupied_periods.some(p =>
+                p.start_date < billForm.due_date && p.due_date > billForm.start_date
+            );
+        }
+
+        return true;
+    });
 });
 
 // Pricings filtered by selected category
@@ -411,10 +428,10 @@ const allBills = computed(() => props.bills);
                                 <tr>
                                     <th class="px-4 py-3 text-left font-medium">#</th>
                                     <th class="px-4 py-3 text-left font-medium">Total</th>
-                                    <th class="px-4 py-3 text-left font-medium">Mulai</th>
-                                    <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 text-left font-medium">Mulai Sewa</th>
+                                    <th class="px-4 py-3 text-left font-medium">Akhir Sewa</th>
                                     <th class="px-4 py-3 text-left font-medium">Status</th>
-                                    <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                                    <!-- <th class="px-4 py-3 text-right font-medium">Aksi</th> -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -431,9 +448,9 @@ const allBills = computed(() => props.bills);
                                             {{ bill.status }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-3 text-right">
+                                    <!-- <td class="px-4 py-3 text-right">
                                         <Button variant="ghost" size="sm" class="h-7 text-xs" @click="openStatusDialog(bill)"> Ubah Status </Button>
-                                    </td>
+                                    </td> -->
                                 </tr>
                             </tbody>
                         </table>
@@ -467,20 +484,10 @@ const allBills = computed(() => props.bills);
                         </select>
                     </div>
 
-                    <!-- Room selection (filtered by category) -->
+                    <!-- Start Date -->
                     <div class="grid gap-2">
-                        <Label for="bill_room_id">Room</Label>
-                        <select
-                            id="bill_room_id"
-                            v-model="billForm.room_id"
-                            :disabled="!billForm.category_id"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-                        >
-                            <option value="" disabled>Pilih room...</option>
-                            <option v-for="room in filteredRooms" :key="room.id" :value="room.id">
-                                {{ room.kost_name }} — {{ room.room_number }}
-                            </option>
-                        </select>
+                        <Label for="start_date">Tanggal Mulai</Label>
+                        <Input id="start_date" v-model="billForm.start_date" type="date" />
                     </div>
 
                     <!-- Pricing -->
@@ -489,7 +496,7 @@ const allBills = computed(() => props.bills);
                         <select
                             id="pricing_id"
                             v-model="billForm.pricing_id"
-                            :disabled="!billForm.category_id"
+                            :disabled="!billForm.category_id || !billForm.start_date"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                         >
                             <option value="" disabled>Pilih durasi...</option>
@@ -499,10 +506,20 @@ const allBills = computed(() => props.bills);
                         </select>
                     </div>
 
-                    <!-- Start Date -->
+                    <!-- Room selection (filtered by category and date) -->
                     <div class="grid gap-2">
-                        <Label for="start_date">Tanggal Mulai</Label>
-                        <Input id="start_date" v-model="billForm.start_date" type="date" />
+                        <Label for="bill_room_id">Room</Label>
+                        <select
+                            id="bill_room_id"
+                            v-model="billForm.room_id"
+                            :disabled="!billForm.category_id || !billForm.pricing_id || !billForm.start_date"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                        >
+                            <option value="" disabled>Pilih room...</option>
+                            <option v-for="room in filteredRooms" :key="room.id" :value="room.id">
+                                {{ room.kost_name }} — {{ room.room_number }}
+                            </option>
+                        </select>
                     </div>
 
                     <!-- Due Date (auto) -->

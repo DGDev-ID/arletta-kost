@@ -126,7 +126,7 @@ class TenantController extends Controller
 
         // Categories with their pricings (for the Create Bill form)
         $categories = RoomCategory::with(['kost', 'pricings'])
-            ->whereHas('rooms', fn ($q) => $q->where('status', 'available'))
+            ->whereHas('rooms', fn ($q) => $q->where('status', '!=', 'maintenance'))
             ->get()
             ->map(fn (RoomCategory $cat) => [
                 'id' => $cat->id,
@@ -139,9 +139,11 @@ class TenantController extends Controller
                 ])->toArray(),
             ]);
 
-        // Available rooms (status = available) for the Create Bill form
-        $availableRooms = Room::with('roomCategory.kost')
-            ->where('status', 'available')
+        // All non-maintenance rooms with their occupied periods for date-based filtering
+        $availableRooms = Room::with(['roomCategory.kost', 'bills' => function ($q) {
+            $q->whereIn('status', ['paid', 'unpaid'])->select('id', 'room_id', 'start_date', 'due_date', 'status');
+        }])
+            ->where('status', '!=', 'maintenance')
             ->get()
             ->map(fn (Room $room) => [
                 'id' => $room->id,
@@ -149,6 +151,10 @@ class TenantController extends Controller
                 'kost_name' => $room->roomCategory->kost->name,
                 'category_id' => $room->room_category_id,
                 'category_name' => $room->roomCategory->name,
+                'occupied_periods' => $room->bills->map(fn ($b) => [
+                    'start_date' => $b->start_date->format('Y-m-d'),
+                    'due_date' => $b->due_date->format('Y-m-d'),
+                ])->toArray(),
             ]);
 
         return Inertia::render('Management/Tenants/Show', [
