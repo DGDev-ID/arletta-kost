@@ -26,7 +26,7 @@ class SignatureController extends Controller
             ->whereDate('start_date', '<=', $today)
             ->latest()
             ->paginate(15)
-            ->through(fn (Bill $bill) => [
+            ->through(fn(Bill $bill) => [
                 'id' => $bill->id,
                 'room_number' => $bill->room->room_number ?? '-',
                 'tenant_name' => $bill->tenant->name ?? '-',
@@ -41,7 +41,7 @@ class SignatureController extends Controller
             ->latest()
             ->limit(20)
             ->get()
-            ->map(fn (Bill $bill) => [
+            ->map(fn(Bill $bill) => [
                 'id' => $bill->id,
                 'room_number' => $bill->room->room_number ?? '-',
                 'tenant_name' => $bill->tenant->name ?? '-',
@@ -97,23 +97,18 @@ class SignatureController extends Controller
         }
 
         $tempFileName = (string) Str::uuid() . '.' . $ext;
-        // save to local temp
         Storage::disk('local')->put('temp/' . $tempFileName, $decoded);
 
         try {
-            // upload to supabase via helper
-            $supabasePath = S3Helper::storeFileToS3('signatures', $tempFileName);
-            $publicUrl = S3Helper::getUrlFileS3('signatures', $tempFileName);
 
-            // remove local temp
+            S3Helper::storeFileToS3('signatures', $tempFileName);
+            $imgUrl = S3Helper::getUrlFileS3('signatures', $tempFileName);
             S3Helper::removeFileTemp($tempFileName);
 
-            // save public URL in bill.signature
-            $bill->update(['signature' => $publicUrl]);
+            $bill->update(['signature' => $imgUrl]);
 
             return back()->with('success', 'Signature berhasil ditambahkan.');
         } catch (\Exception $e) {
-            // cleanup and return error
             S3Helper::removeFileTemp($tempFileName);
             return back()->with('error', 'Upload signature gagal: ' . $e->getMessage());
         }
