@@ -41,7 +41,7 @@ class TenantController extends Controller
                 'bills_count' => $tenant->bills->count(),
                 'unpaid_bills' => $tenant->bills()
                     ->where('status', 'unpaid')
-                    ->whereHas('transaction', function ($q) {
+                    ->whereHas('transactions', function ($q) {
                         $q->where('status', '!=', 'failed');
                     })
                     ->count(),
