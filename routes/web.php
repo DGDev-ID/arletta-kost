@@ -8,6 +8,7 @@ use App\Http\Controllers\Master\RoomCategoryController;
 use App\Http\Controllers\Master\RoomController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\Transaction\RefundRequestController;
+use App\Http\Controllers\Transaction\BillApprovalController;
 use App\Http\Controllers\Transaction\SignatureController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
@@ -47,6 +48,9 @@ Route::middleware(['auth', 'verified'])->prefix('management')->name('management.
 });
 
 Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transactions.')->group(function () {
+    // Bill approval management
+    Route::get('bill-approval', [BillApprovalController::class, 'index'])->name('bill-approval.index');
+
     // Refund request management
     Route::get('refund-requests', [RefundRequestController::class, 'index'])->name('refund-requests.index');
     Route::patch('refund-requests/{bill}/approve', [RefundRequestController::class, 'approve'])->name('refund-requests.approve');

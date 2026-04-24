@@ -89,6 +89,9 @@ class BillController extends Controller
 
             // Add a failed detail record
             $transaction->details()->create(['status' => 'failed']);
+
+            // Update bill status to cancelled
+            $transaction->bill->update(['status' => 'cancelled']);
         });
 
         return back()->with('success', 'Transaksi berhasil diupdate menjadi Failed.');
