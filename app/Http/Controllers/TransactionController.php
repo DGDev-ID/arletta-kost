@@ -107,22 +107,23 @@ class TransactionController extends Controller
     public function refund(Request $request, Transaction $transaction): RedirectResponse
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
             'remark' => 'nullable|string|max:1000',
         ]);
+
+        $amount = $transaction->total_price * 0.8;
 
         // Create a refund request record and mark the bill as 'refund_request'
         // Avoid duplicate requests: update existing request or create new
         $existing = TransactionRefund::where('bill_id', $transaction->bill_id)->first();
         if ($existing) {
             $existing->update([
-                'amount' => $validated['amount'],
+                'amount' => $amount,
                 'remark' => $validated['remark'] ?? null,
             ]);
         } else {
             TransactionRefund::create([
                 'bill_id' => $transaction->bill_id,
-                'amount' => $validated['amount'],
+                'amount' => $amount,
                 'remark' => $validated['remark'] ?? null,
             ]);
         }

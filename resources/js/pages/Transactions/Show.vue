@@ -80,7 +80,7 @@ const flash = computed(() => {
 // Refund dialog
 const showRefundDialog = ref(false);
 const refundForm = useForm({
-    amount: 0,
+    amount: props.transaction.total_price * 0.8,
     remark: '',
 });
 
@@ -297,9 +297,8 @@ const timelineIcon = (s: string) => {
 
                 <form @submit.prevent="submitRefund" class="grid gap-4">
                     <div class="grid gap-2">
-                        <Label for="refund_amount">Jumlah Refund</Label>
-                        <Input id="refund_amount" v-model.number="refundForm.amount" type="number" min="1" placeholder="0" />
-                        <p v-if="refundForm.errors.amount" class="text-xs text-destructive">{{ refundForm.errors.amount }}</p>
+                        <Label for="refund_amount">Jumlah Refund (80%)</Label>
+                        <Input id="refund_amount" :model-value="formatCurrency(refundForm.amount)" disabled />
                     </div>
                     <div class="grid gap-2">
                         <Label for="refund_remark">Keterangan (opsional)</Label>
