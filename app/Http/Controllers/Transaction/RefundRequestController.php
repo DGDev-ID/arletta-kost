@@ -16,7 +16,7 @@ class RefundRequestController extends Controller
     public function index(Request $request): Response
     {
         // Bills already refunded
-        $refunds = Bill::with(['tenant', 'room.roomCategory.kost'])
+        $refunds = Bill::with(['tenant', 'room.roomCategory.kost', 'refunds'])
             ->where('status', 'refund')
             ->latest()
             ->paginate(15, ['*'], 'refunds_page')
@@ -26,13 +26,14 @@ class RefundRequestController extends Controller
                 'tenant_phone' => $bill->tenant->phone_number ?? '-',
                 'room_number' => $bill->room->room_number ?? '-',
                 'total_price' => (float) $bill->total_price,
+                'refund_amount' => (float) ($bill->refunds->sortByDesc('created_at')->first()?->amount ?? ($bill->total_price * 0.8)),
                 'start_date' => $bill->start_date?->format('d-m-Y'),
                 'due_date' => $bill->due_date?->format('d-m-Y'),
                 'status' => $bill->status,
             ]);
 
         // Bills with refund requests awaiting approval
-        $requests = Bill::with(['tenant', 'room.roomCategory.kost'])
+        $requests = Bill::with(['tenant', 'room.roomCategory.kost', 'refunds'])
             ->where('status', 'refund_request')
             ->latest()
             ->paginate(15, ['*'], 'requests_page')
@@ -42,6 +43,7 @@ class RefundRequestController extends Controller
                 'tenant_phone' => $bill->tenant->phone_number ?? '-',
                 'room_number' => $bill->room->room_number ?? '-',
                 'total_price' => (float) $bill->total_price,
+                'refund_amount' => (float) ($bill->refunds->sortByDesc('created_at')->first()?->amount ?? ($bill->total_price * 0.8)),
                 'start_date' => $bill->start_date?->format('d-m-Y'),
                 'due_date' => $bill->due_date?->format('d-m-Y'),
                 'status' => $bill->status,
