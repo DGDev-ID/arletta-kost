@@ -110,7 +110,7 @@ class RoomCategoryController extends Controller
             if ($request->hasFile('images')) {
                 if ($request->hasFile('images')) {
                     foreach ($request->file('images') as $image) {
-                        $tempFileName = S3Helper::storeFileTemp($request->file('image'));
+                        $tempFileName = S3Helper::storeFileTemp($image);
                         S3Helper::storeFileToS3('room_categories', $tempFileName);
                         $imgUrl = S3Helper::getUrlFileS3('room_categories', $tempFileName);
                         S3Helper::removeFileTemp($tempFileName);
@@ -252,7 +252,7 @@ class RoomCategoryController extends Controller
             // Add new images with S3Helper
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
-                    $tempFileName = S3Helper::storeFileTemp($request->file('image'));
+                    $tempFileName = S3Helper::storeFileTemp($image);
                     S3Helper::storeFileToS3('room_categories', $tempFileName);
                     $imgUrl = S3Helper::getUrlFileS3('room_categories', $tempFileName);
                     S3Helper::removeFileTemp($tempFileName);
