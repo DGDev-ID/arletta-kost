@@ -187,15 +187,32 @@ const submitBill = () => {
 };
 
 // --- Manual payment actions ---
-const makeSuccess = (transactionId: number) => {
-    router.patch(route('management.bills.make-success', transactionId), {}, {
-        preserveScroll: true,
-    });
+const confirmDialog = ref({
+    show: false,
+    transactionId: null as number | null,
+    action: '' as 'success' | 'failed' | '',
+});
+
+const confirmAction = (transactionId: number, action: 'success' | 'failed') => {
+    confirmDialog.value = {
+        show: true,
+        transactionId,
+        action,
+    };
 };
 
-const makeFailed = (transactionId: number) => {
-    router.patch(route('management.bills.make-failed', transactionId), {}, {
+const proceedAction = () => {
+    if (!confirmDialog.value.transactionId) return;
+
+    const routeName = confirmDialog.value.action === 'success' 
+        ? 'management.bills.make-success' 
+        : 'management.bills.make-failed';
+    
+    router.patch(route(routeName, confirmDialog.value.transactionId), {}, {
         preserveScroll: true,
+        onFinish: () => {
+            confirmDialog.value.show = false;
+        }
     });
 };
 
@@ -400,11 +417,11 @@ const allBills = computed(() => props.bills);
                                     <td class="px-4 py-3 text-right">
                                         <div class="flex items-center justify-end gap-1">
                                             <template v-for="t in bill.transactions.filter(t => t.payment_type === 'manual' && t.status === 'pending')" :key="t.id">
-                                                <Button variant="outline" size="sm" class="h-7 text-xs text-green-700" @click="makeSuccess(t.id)">
+                                                <Button variant="outline" size="sm" class="h-7 text-xs text-green-700" @click="confirmAction(t.id, 'success')">
                                                     <CheckCircle class="mr-1 h-3 w-3" />
                                                     Make Success
                                                 </Button>
-                                                <Button variant="outline" size="sm" class="h-7 text-xs text-red-700" @click="makeFailed(t.id)">
+                                                <Button variant="outline" size="sm" class="h-7 text-xs text-red-700" @click="confirmAction(t.id, 'failed')">
                                                     <XCircle class="mr-1 h-3 w-3" />
                                                     Make Failed
                                                 </Button>
@@ -575,6 +592,27 @@ const allBills = computed(() => props.bills);
                         <Button variant="secondary">Batal</Button>
                     </DialogClose>
                     <Button @click="updateStatus">Simpan</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Confirm Action Dialog -->
+        <Dialog v-model:open="confirmDialog.show">
+            <DialogContent class="sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>Konfirmasi Aksi</DialogTitle>
+                    <DialogDescription>
+                        Apakah Anda yakin ingin <strong :class="confirmDialog.action === 'success' ? 'text-green-600' : 'text-red-600'">{{ confirmDialog.action === 'success' ? 'menyetujui' : 'menolak' }}</strong> pembayaran ini?
+                    </DialogDescription>
+                </DialogHeader>
+
+                <DialogFooter class="mt-4">
+                    <DialogClose as-child>
+                        <Button variant="secondary">Batal</Button>
+                    </DialogClose>
+                    <Button :variant="confirmDialog.action === 'success' ? 'default' : 'destructive'" @click="proceedAction">
+                        Ya, Yakin
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
