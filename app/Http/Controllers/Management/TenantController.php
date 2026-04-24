@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Models\RoomCategory;
 use App\Models\Tenant;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -85,7 +86,7 @@ class TenantController extends Controller
         return to_route('management.tenants.index')->with('success', 'Tenant berhasil ditambahkan.');
     }
 
-    public function show(Tenant $tenant): Response
+    public function show(Tenant $tenant)
     {
         $tenant->load(['rooms.roomCategory.kost', 'bills.transactions']);
 
@@ -101,11 +102,10 @@ class TenantController extends Controller
             'address' => $tenant->address,
             'rooms' => $tenant->bills
                 ->filter(function ($bill) {
-                    $today = now()->toDateString();
+                    $today = now();
 
                     return $bill->status === 'paid'
-                        && $today >= $bill->start_date
-                        && $today <= $bill->end_date;
+                         && $today->between(Carbon::parse($bill->start_date), Carbon::parse($bill->end_date));
                 })
                 ->map(fn($bill) => [
                     'id' => $bill->room->id,
@@ -113,8 +113,8 @@ class TenantController extends Controller
                     'kost_name' => $bill->room->roomCategory->kost->name,
                     'category_name' => $bill->room->roomCategory->name,
                     'bill_id' => $bill->id,
-                    'start_date' => $bill->start_date,
-                    'end_date' => $bill->end_date,
+                    'start_date' => $bill->start_date?->format('Y-m-d'),
+                    'end_date' => $bill->due_date?->format('Y-m-d'),
                     'status' => $bill->status,
                 ])
                 ->values()
