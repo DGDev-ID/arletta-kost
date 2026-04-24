@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Kost;
 use App\Models\RoomCategory;
@@ -27,7 +28,7 @@ class RoomCategoryController extends Controller
                 $query->where('name', 'like', "%{$search}%");
             }
 
-            $categories = $query->latest()->get()->map(fn (RoomCategory $cat) => [
+            $categories = $query->latest()->get()->map(fn(RoomCategory $cat) => [
                 'id' => $cat->id,
                 'name' => $cat->name,
                 'description' => $cat->description,
@@ -41,13 +42,13 @@ class RoomCategoryController extends Controller
         $search = $request->input('search', '');
 
         $categories = RoomCategory::with(['kost', 'images', 'details', 'rooms'])
-            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+            ->when($search, fn($q) => $q->where(function ($q2) use ($search) {
                 $q2->where('name', 'like', "%{$search}%")
-                    ->orWhereHas('kost', fn ($q3) => $q3->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('kost', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
             }))
             ->latest()
             ->paginate(15)
-            ->through(fn (RoomCategory $cat) => [
+            ->through(fn(RoomCategory $cat) => [
                 'id' => $cat->id,
                 'name' => $cat->name,
                 'description' => $cat->description,
@@ -107,11 +108,14 @@ class RoomCategoryController extends Controller
 
             // Handle images with S3Helper
             if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    $tempFileName = \App\Helpers\S3Helper::storeFileTemp($image);
-                    $s3Path = \App\Helpers\S3Helper::storeFileToS3('room-categories', $tempFileName);
-                    \App\Helpers\S3Helper::removeFileTemp($tempFileName);
-                    $category->images()->create(['img_url' => $s3Path]);
+                if ($request->hasFile('images')) {
+                    foreach ($request->file('images') as $image) {
+                        $tempFileName = S3Helper::storeFileTemp($request->file('image'));
+                        S3Helper::storeFileToS3('room_categories', $tempFileName);
+                        $imgUrl = S3Helper::getUrlFileS3('room_categories', $tempFileName);
+                        S3Helper::removeFileTemp($tempFileName);
+                        $category->images()->create(['img_url' => $imgUrl]);
+                    }
                 }
             }
 
@@ -158,21 +162,21 @@ class RoomCategoryController extends Controller
                 'kost_id' => $roomCategory->kost_id,
                 'name' => $roomCategory->name,
                 'description' => $roomCategory->description,
-                'images' => $roomCategory->images->map(fn ($img) => [
+                'images' => $roomCategory->images->map(fn($img) => [
                     'id' => $img->id,
                     'img_url' => $img->img_url,
-                    'full_url' => Storage::disk('public')->url($img->img_url),
+                    'full_url' => $img->img_url,
                 ]),
-                'details' => $roomCategory->details->map(fn ($d) => [
+                'details' => $roomCategory->details->map(fn($d) => [
                     'id' => $d->id,
                     'detail' => $d->detail,
                     'icon' => $d->icon,
                 ]),
-                'pricings' => $roomCategory->pricings->map(fn ($p) => [
+                'pricings' => $roomCategory->pricings->map(fn($p) => [
                     'id' => $p->id,
                     'duration_days' => $p->duration_days,
                     'price' => $p->price,
-                    'promos' => $p->promos->map(fn ($r) => [
+                    'promos' => $p->promos->map(fn($r) => [
                         'id' => $r->id,
                         'type' => $r->type,
                     ]),
@@ -248,10 +252,11 @@ class RoomCategoryController extends Controller
             // Add new images with S3Helper
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
-                    $tempFileName = \App\Helpers\S3Helper::storeFileTemp($image);
-                    $s3Path = \App\Helpers\S3Helper::storeFileToS3('room-categories', $tempFileName);
-                    \App\Helpers\S3Helper::removeFileTemp($tempFileName);
-                    $roomCategory->images()->create(['img_url' => $s3Path]);
+                    $tempFileName = S3Helper::storeFileTemp($request->file('image'));
+                    S3Helper::storeFileToS3('room_categories', $tempFileName);
+                    $imgUrl = S3Helper::getUrlFileS3('room_categories', $tempFileName);
+                    S3Helper::removeFileTemp($tempFileName);
+                    $roomCategory->images()->create(['img_url' => $imgUrl]);
                 }
             }
 
