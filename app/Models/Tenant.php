@@ -46,4 +46,30 @@ class Tenant extends Model
     {
         return $this->hasMany(Bill::class, 'tenant_id');
     }
+
+    protected static function booted()
+    {
+        static::creating(function ($tenant) {
+            $tenant->phone_number = self::normalizePhone($tenant->phone_number);
+        });
+
+        static::updating(function ($tenant) {
+            $tenant->phone_number = self::normalizePhone($tenant->phone_number);
+        });
+    }
+
+    private static function normalizePhone($phone)
+    {
+        $phone = preg_replace('/\D/', '', $phone);
+
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
+        if (!str_starts_with($phone, '62')) {
+            $phone = '62' . $phone;
+        }
+
+        return $phone;
+    }
 }
