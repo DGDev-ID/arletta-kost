@@ -33,7 +33,7 @@ class RoomController extends Controller
                 'id' => $room->id,
                 'room_number' => $room->room_number,
                 'status' => $room->bills()
-                    ->whereIn('status', ['paid', 'done_payment', 'finished_payment'])
+                    ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
                     ->where('start_date', '<=', now()->toDateString())
                     ->where('due_date', '>=', now()->toDateString())
                     ->exists() ? 'occupied' : $room->status,
@@ -142,7 +142,7 @@ class RoomController extends Controller
     public function bills(Room $room): JsonResponse
     {
         $bills = Bill::where('room_id', $room->id)
-            ->whereIn('status', ['paid', 'done_payment', 'finished_payment'])
+            ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->with('tenant')
             ->orderByDesc('due_date')
             ->get()
@@ -167,7 +167,7 @@ class RoomController extends Controller
 
         // show all paid bills regardless of date
         $query = Bill::where('room_id', $room->id)
-            ->whereIn('status', ['paid', 'done_payment', 'finished_payment'])
+            ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->with('tenant')
             ->when($search, fn ($q) => $q->whereHas('tenant', fn ($q2) => $q2->where('name', 'like', "%{$search}%")))
             ->orderBy('start_date', 'asc');
