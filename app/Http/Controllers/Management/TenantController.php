@@ -104,7 +104,7 @@ class TenantController extends Controller
                 ->filter(function ($bill) {
                     $today = now();
 
-                    return $bill->status === 'paid'
+                    return in_array($bill->status, ['paid', 'down_payment', 'finished_payment'])
                          && $today->between(Carbon::parse($bill->start_date), Carbon::parse($bill->end_date));
                 })
                 ->map(fn($bill) => [
@@ -123,7 +123,7 @@ class TenantController extends Controller
 
         // Bills
         $bills = $tenant->bills()
-            ->with(['transactions'])
+            ->with(['transactions', 'room.roomCategory.kost'])
             ->latest()
             ->get()
             ->map(fn($bill) => [
@@ -133,10 +133,15 @@ class TenantController extends Controller
                 'due_date' => $bill->due_date->format('Y-m-d'),
                 'status' => $bill->status,
                 'room_id' => $bill->room_id,
+                'room_number' => $bill->room ? $bill->room->room_number : '-',
+                'kost_name' => $bill->room && $bill->room->roomCategory && $bill->room->roomCategory->kost ? $bill->room->roomCategory->kost->name : '-',
+                'payment_scheme' => $bill->payment_scheme,
+                'dp_amount' => (float) $bill->dp_amount,
                 'transactions' => $bill->transactions->map(fn($t) => [
                     'id' => $t->id,
                     'order_id' => $t->order_id,
                     'payment_type' => $t->payment_type,
+                    'transaction_type' => $t->transaction_type,
                     'status' => $t->status,
                     'total_price' => (float) $t->total_price,
                 ])->toArray(),
@@ -159,7 +164,7 @@ class TenantController extends Controller
 
         // All non-maintenance rooms with their occupied periods for date-based filtering
         $availableRooms = Room::with(['roomCategory.kost', 'bills' => function ($q) {
-            $q->whereIn('status', ['paid', 'unpaid'])->select('id', 'room_id', 'start_date', 'due_date', 'status');
+            $q->whereIn('status', ['paid', 'unpaid', 'down_payment', 'finished_payment'])->select('id', 'room_id', 'start_date', 'due_date', 'status');
         }])
             ->where('status', '!=', 'maintenance')
             ->get()

@@ -21,7 +21,7 @@ class SignatureController extends Controller
         $today = Carbon::today();
 
         $bills = Bill::with(['room.roomCategory.kost', 'tenant'])
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->whereNull('signature')
             ->whereDate('start_date', '<=', $today)
             ->latest()
@@ -36,7 +36,7 @@ class SignatureController extends Controller
 
         // Bills that have been signed
         $signedBills = Bill::with(['room.roomCategory.kost', 'tenant'])
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->whereNotNull('signature')
             ->latest()
             ->limit(20)
@@ -64,8 +64,8 @@ class SignatureController extends Controller
         ]);
 
         // only allow signing for paid bills without signature and with start_date <= today
-        if ($bill->status !== 'paid') {
-            return back()->with('error', 'Bill harus berstatus paid untuk tanda tangan.');
+        if (!in_array($bill->status, ['paid', 'down_payment', 'finished_payment'])) {
+            return back()->with('error', 'Bill harus berstatus paid/down_payment untuk tanda tangan.');
         }
 
         if ($bill->signature !== null) {

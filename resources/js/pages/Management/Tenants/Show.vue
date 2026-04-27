@@ -47,6 +47,7 @@ interface TransactionItem {
     id: number;
     order_id: string;
     payment_type: string;
+    transaction_type?: string;
     status: string;
     total_price: number;
 }
@@ -58,6 +59,10 @@ interface BillItem {
     due_date: string;
     status: string;
     room_id: number;
+    room_number?: string;
+    kost_name?: string;
+    payment_scheme?: string;
+    dp_amount?: number;
     transactions: TransactionItem[];
 }
 
@@ -117,8 +122,16 @@ const billForm = useForm({
     room_id: '' as number | '',
     pricing_id: '' as number | '',
     total_price: 0,
+    payment_scheme: 'full_pay' as 'full_pay' | 'dp',
     start_date: '',
     due_date: '',
+});
+
+const dpAmount = computed(() => {
+    if (billForm.payment_scheme === 'dp') {
+        return billForm.total_price * 0.5;
+    }
+    return null;
 });
 
 // Rooms filtered by selected category and date overlap
@@ -183,7 +196,7 @@ const submitBill = () => {
         preserveScroll: true,
         onSuccess: () => {
             showBillDialog.value = false;
-            billForm.reset('category_id', 'room_id', 'pricing_id', 'total_price', 'start_date', 'due_date');
+            billForm.reset('category_id', 'room_id', 'pricing_id', 'total_price', 'payment_scheme', 'start_date', 'due_date');
         },
     });
 };
@@ -293,6 +306,12 @@ const manualBills = computed(() => {
     });
 });
 
+const dpPendingBills = computed(() => {
+    return props.bills.filter(bill => {
+        return bill.payment_scheme === 'dp' && bill.status === 'down_payment';
+    });
+});
+
 // All bills for the history view
 const allBills = computed(() => props.bills);
 </script>
@@ -399,6 +418,7 @@ const allBills = computed(() => props.bills);
                         <table class="w-full text-sm">
                             <thead class="border-b bg-muted/50">
                                 <tr>
+                                    <th class="px-4 py-3 text-left font-medium">Ruangan</th>
                                     <th class="px-4 py-3 text-left font-medium">Total</th>
                                     <th class="px-4 py-3 text-left font-medium">Mulai</th>
                                     <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
@@ -409,6 +429,10 @@ const allBills = computed(() => props.bills);
                             </thead>
                             <tbody>
                                 <tr v-for="bill in manualBills" :key="bill.id" class="border-b last:border-0">
+                                    <td class="px-4 py-3">
+                                        <p class="font-medium">{{ bill.room_number }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ bill.kost_name }}</p>
+                                    </td>
                                     <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
                                     <td class="px-4 py-3">{{ bill.start_date }}</td>
                                     <td class="px-4 py-3">{{ bill.due_date }}</td>
@@ -446,6 +470,59 @@ const allBills = computed(() => props.bills);
 
                 <Separator v-if="manualBills.length > 0" />
 
+                <!-- DP Waiting for Remaining Payment -->
+                <div v-if="dpPendingBills.length > 0">
+                    <HeadingSmall title="Menunggu Pelunasan (DP)" :description="`${dpPendingBills.length} tagihan menunggu pelunasan`" />
+                    <div class="overflow-hidden rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="border-b bg-muted/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-medium">Ruangan</th>
+                                    <th class="px-4 py-3 text-left font-medium">Total Bill</th>
+                                    <th class="px-4 py-3 text-left font-medium">Sudah Dibayar</th>
+                                    <th class="px-4 py-3 text-left font-medium">Sisa Pembayaran</th>
+                                    <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 text-left font-medium">Status</th>
+                                    <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="bill in dpPendingBills" :key="bill.id" class="border-b last:border-0">
+                                    <td class="px-4 py-3">
+                                        <p class="font-medium">{{ bill.room_number }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ bill.kost_name }}</p>
+                                    </td>
+                                    <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
+                                    <td class="px-4 py-3">{{ formatCurrency(bill.dp_amount || 0) }}</td>
+                                    <td class="px-4 py-3 font-semibold text-orange-600 dark:text-orange-400">{{ formatCurrency(bill.total_price - (bill.dp_amount || 0)) }}</td>
+                                    <td class="px-4 py-3">{{ bill.due_date }}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                            {{ bill.status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <template v-for="t in bill.transactions.filter(t => t.transaction_type === 'finished_payment' && t.status === 'pending')" :key="t.id">
+                                                <Button variant="outline" size="sm" class="h-7 text-xs text-green-700" @click="confirmAction(t.id, 'success')">
+                                                    <CheckCircle class="mr-1 h-3 w-3" />
+                                                    Make Success
+                                                </Button>
+                                                <Button variant="outline" size="sm" class="h-7 text-xs text-red-700" @click="confirmAction(t.id, 'failed')">
+                                                    <XCircle class="mr-1 h-3 w-3" />
+                                                    Make Failed
+                                                </Button>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <Separator v-if="dpPendingBills.length > 0" />
+
                 <!-- All Bills History -->
                 <div>
                     <HeadingSmall title="Riwayat Tagihan" :description="`${allBills.length} tagihan`" />
@@ -454,6 +531,7 @@ const allBills = computed(() => props.bills);
                             <thead class="border-b bg-muted/50">
                                 <tr>
                                     <th class="px-4 py-3 text-left font-medium">#</th>
+                                    <th class="px-4 py-3 text-left font-medium">Ruangan</th>
                                     <th class="px-4 py-3 text-left font-medium">Total</th>
                                     <th class="px-4 py-3 text-left font-medium">Mulai Sewa</th>
                                     <th class="px-4 py-3 text-left font-medium">Akhir Sewa</th>
@@ -467,6 +545,10 @@ const allBills = computed(() => props.bills);
                                 </tr>
                                 <tr v-for="(bill, idx) in allBills" :key="bill.id" class="border-b last:border-0">
                                     <td class="px-4 py-3 font-medium">{{ idx + 1 }}</td>
+                                    <td class="px-4 py-3">
+                                        <p class="font-medium">{{ bill.room_number }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ bill.kost_name }}</p>
+                                    </td>
                                     <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
                                     <td class="px-4 py-3">{{ bill.start_date }}</td>
                                     <td class="px-4 py-3">{{ bill.due_date }}</td>
@@ -559,6 +641,25 @@ const allBills = computed(() => props.bills);
                     <div class="grid gap-2">
                         <Label for="total_price">Total Harga</Label>
                         <Input id="total_price" :model-value="formatCurrency(billForm.total_price)" disabled />
+                    </div>
+
+                    <!-- Payment Scheme -->
+                    <div class="grid gap-2">
+                        <Label for="payment_scheme">Skema Pembayaran</Label>
+                        <select
+                            id="payment_scheme"
+                            v-model="billForm.payment_scheme"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="full_pay">Full Pay</option>
+                            <option value="dp">Down Payment (DP 50%)</option>
+                        </select>
+                    </div>
+
+                    <!-- DP Amount (If DP selected) -->
+                    <div class="grid gap-2" v-if="billForm.payment_scheme === 'dp'">
+                        <Label>Nominal DP yang akan ditagihkan (50%)</Label>
+                        <Input :model-value="formatCurrency(dpAmount || 0)" disabled class="bg-blue-50/50" />
                     </div>
 
                     <DialogFooter>

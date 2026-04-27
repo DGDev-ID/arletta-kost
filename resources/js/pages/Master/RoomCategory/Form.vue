@@ -9,6 +9,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { LoaderCircle, Plus, Trash2, Upload, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { formatRupiah } from '@/lib/currency';
 
 interface KostItem {
     id: number;
@@ -99,6 +100,27 @@ const addPromo = (pricingIndex: number) => {
 
 const removePromo = (pricingIndex: number, promoIndex: number) => {
     pricings.value[pricingIndex].promos.splice(promoIndex, 1);
+};
+
+// Helper memformat angka dengan titik
+const formatInputRupiah = (value: number | null) => {
+    if (!value) return '';
+    return value.toLocaleString('id-ID'); 
+};
+
+// Handler yang baru (menerima string/angka, bukan Event DOM)
+const handlePriceInput = (val: string | number | undefined, pidx: number) => {
+    // Jika input kosong (user menghapus semua angka)
+    if (!val) {
+        pricings.value[pidx].price = null;
+        return;
+    }
+    
+    // Pastikan val menjadi string, lalu hapus semua karakter selain angka
+    const rawValue = String(val).replace(/\D/g, '');
+    
+    // Simpan nilai murni ke state
+    pricings.value[pidx].price = rawValue ? parseInt(rawValue, 10) : null;
 };
 
 // Remove detail row
@@ -325,8 +347,13 @@ const submit = () => {
                                     <Input type="number" v-model.number="pricing.duration_days" />
                                 </div>
                                 <div class="w-48 grid gap-2">
-                                    <Label>Harga (IDR)</Label>
-                                    <Input type="number" v-model.number="pricing.price" />
+                                    <Label>Harga</Label>
+                                    <Input 
+        type="text" 
+        :model-value="pricing.price ? formatRupiah(pricing.price) : ''"
+        @update:model-value="(val) => handlePriceInput(val, pidx)"
+        placeholder="Rp 0"
+    />
                                 </div>
                                 <div class="flex items-start">
                                     <Button type="button" variant="ghost" size="icon" class="h-9 w-9 mt-6 text-destructive" @click="removePricing(pidx)">

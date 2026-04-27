@@ -16,6 +16,7 @@ interface TransactionItem {
     tenant_name: string;
     room_number: string;
     payment_type: string;
+    transaction_type: string;
     total_price: number;
     status: string;
     created_at: string;
@@ -129,6 +130,7 @@ const formatCurrency = (value: number) => {
                             <th class="px-4 py-3 text-left font-medium">Order ID</th>
                             <th class="px-4 py-3 text-left font-medium">Tenant</th>
                             <th class="px-4 py-3 text-left font-medium">Room</th>
+                            <th class="px-4 py-3 text-left font-medium">Metode</th>
                             <th class="px-4 py-3 text-left font-medium">Tipe</th>
                             <th class="px-4 py-3 text-left font-medium">Total</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
@@ -145,6 +147,7 @@ const formatCurrency = (value: number) => {
                             <td class="px-4 py-3">{{ trx.tenant_name }}</td>
                             <td class="px-4 py-3">{{ trx.room_number }}</td>
                             <td class="px-4 py-3 capitalize">{{ trx.payment_type }}</td>
+                            <td class="px-4 py-3 capitalize">{{ trx.transaction_type ? trx.transaction_type.replace('_', ' ') : 'Full Payment' }}</td>
                             <td class="px-4 py-3">{{ formatCurrency(trx.total_price) }}</td>
                             <td class="px-4 py-3">
                                 <span :class="statusBadge(trx.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">

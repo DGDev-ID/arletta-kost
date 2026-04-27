@@ -10,6 +10,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\Transaction\RefundRequestController;
 use App\Http\Controllers\Transaction\BillApprovalController;
 use App\Http\Controllers\Transaction\SignatureController;
+use App\Http\Controllers\Management\CheckoutController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use Inertia\Inertia;
@@ -45,6 +46,9 @@ Route::middleware(['auth', 'verified'])->prefix('management')->name('management.
     Route::patch('bills/{bill}/status', [BillController::class, 'updateStatus'])->name('bills.update-status');
     Route::patch('bills/transactions/{transaction}/make-success', [BillController::class, 'makeSuccess'])->name('bills.make-success');
     Route::patch('bills/transactions/{transaction}/make-failed', [BillController::class, 'makeFailed'])->name('bills.make-failed');
+    
+    Route::get('checkouts', [CheckoutController::class, 'index'])->name('checkouts.index');
+    Route::post('checkouts/{tenant}/room/{room}', [CheckoutController::class, 'process'])->name('checkouts.process');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transactions.')->group(function () {

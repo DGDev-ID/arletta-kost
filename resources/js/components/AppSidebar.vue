@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BedDouble, Building, FolderTree, LayoutGrid, Shield, Users, Wallet, FileSignature, HandCoins, Receipt } from 'lucide-vue-next';
+import { BedDouble, Building, FolderTree, LayoutGrid, Shield, Users, Wallet, FileSignature, HandCoins, Receipt, LogOut } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -44,6 +44,11 @@ const managementNavItems: NavItem[] = [
         title: 'Tenants',
         href: '/management/tenants',
         icon: Users,
+    },
+    {
+        title: 'Check Out',
+        href: '/management/checkouts',
+        icon: LogOut,
     },
 ];
 

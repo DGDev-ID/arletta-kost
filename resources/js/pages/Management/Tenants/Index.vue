@@ -16,7 +16,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
-import { Eye, FileText, Pencil, Plus, Search, Trash2 } from 'lucide-vue-next';
+import { Eye, FileText, FileTextIcon, Pencil, Plus, Search, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 interface TenantItem {
@@ -143,7 +143,7 @@ const deleteTenant = () => {
                             <th class="px-4 py-3 text-left font-medium w-64">Rooms</th>
                             <th class="px-4 py-3 text-left font-medium">Booking</th>
                             <th class="px-4 py-3 text-left font-medium">Bills</th>
-                            <th class="px-4 py-3 text-right font-medium">Aksi</th>
+                            <th class="px-4 py-3 text-center font-medium">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -184,9 +184,9 @@ const deleteTenant = () => {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon" class="h-8 w-8" as-child title="Detail">
+                                    <Button variant="outline" size="sm" class="h-7 text-xs" as-child title="Detail">
                                         <Link :href="route('management.tenants.show', tenant.id)">
-                                            <Eye class="h-4 w-4" />
+                                            <FileTextIcon class="h-4 w-4" /> Bill
                                         </Link>
                                     </Button>
                                     <Button variant="ghost" size="icon" class="h-8 w-8" as-child title="Edit">

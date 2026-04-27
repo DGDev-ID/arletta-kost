@@ -32,6 +32,7 @@ class TransactionController extends Controller
                 'tenant_name' => $trx->bill->tenant->name ?? '-',
                 'room_number' => $trx->bill->room->room_number ?? '-',
                 'payment_type' => $trx->payment_type,
+                'transaction_type' => $trx->transaction_type,
                 'total_price' => (float) $trx->total_price,
                 'status' => $trx->status,
                 'created_at' => $trx->created_at->format('d-m-Y H:i'),
@@ -55,6 +56,7 @@ class TransactionController extends Controller
             'id' => $transaction->id,
             'order_id' => $transaction->order_id,
             'payment_type' => $transaction->payment_type,
+            'transaction_type' => $transaction->transaction_type,
             'midtrans_method' => $transaction->midtrans_method,
             'transaction_fee' => (float) $transaction->transaction_fee,
             'total_price' => (float) $transaction->total_price,
@@ -74,6 +76,8 @@ class TransactionController extends Controller
             'start_date' => $transaction->bill->start_date->format('d-m-Y'),
             'due_date' => $transaction->bill->due_date->format('d-m-Y'),
             'status' => $transaction->bill->status,
+            'payment_scheme' => $transaction->bill->payment_scheme,
+            'dp_amount' => (float) $transaction->bill->dp_amount,
         ];
 
         $details = $transaction->details()

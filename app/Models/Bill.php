@@ -12,6 +12,8 @@ class Bill extends Model
         'room_id',
         'tenant_id',
         'total_price',
+        'payment_scheme',
+        'dp_amount',
         'start_date',
         'due_date',
         'signature',
@@ -24,6 +26,7 @@ class Bill extends Model
             'start_date' => 'datetime',
             'due_date' => 'datetime',
             'total_price' => 'decimal:2',
+            'dp_amount' => 'decimal:2',
         ];
     }
 

@@ -20,9 +20,14 @@ class BillController extends Controller
             'total_price' => 'required|numeric|min:0',
             'start_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:start_date',
+            'payment_scheme' => 'required|in:full_pay,dp',
         ]);
 
         $validated['status'] = 'unpaid';
+
+        if ($validated['payment_scheme'] === 'dp') {
+            $validated['dp_amount'] = $validated['total_price'] * 0.5;
+        }
 
         DB::transaction(function () use ($validated) {
             $bill = Bill::create($validated);
@@ -31,7 +36,8 @@ class BillController extends Controller
             $transaction = $bill->transactions()->create([
                 'order_id' => 'BILL-' . $bill->id . '-' . now()->timestamp,
                 'payment_type' => 'manual',
-                'total_price' => $bill->total_price,
+                'transaction_type' => $bill->payment_scheme === 'dp' ? 'down_payment' : 'full_payment',
+                'total_price' => $bill->payment_scheme === 'dp' ? $bill->dp_amount : $bill->total_price,
                 'status' => 'pending',
             ]);
 
@@ -72,8 +78,30 @@ class BillController extends Controller
             // Add a success detail record
             $transaction->details()->create(['status' => 'success']);
 
-            // Update bill status to paid
-            $transaction->bill->update(['status' => 'paid']);
+            // Update bill status based on transaction type
+            $billStatus = 'paid';
+            if ($transaction->transaction_type === 'down_payment') {
+                $billStatus = 'down_payment';
+
+                // Automatically generate the remaining payment transaction
+                $remainingAmount = $transaction->bill->total_price - $transaction->bill->dp_amount;
+                $newTransaction = $transaction->bill->transactions()->create([
+                    'order_id' => 'REMAINING-' . $transaction->bill->id . '-' . now()->timestamp,
+                    'payment_type' => 'manual',
+                    'transaction_type' => 'finished_payment',
+                    'total_price' => $remainingAmount,
+                    'status' => 'pending',
+                ]);
+                
+                $newTransaction->details()->create([
+                    'status' => 'pending',
+                ]);
+
+            } elseif ($transaction->transaction_type === 'finished_payment') {
+                $billStatus = 'finished_payment';
+            }
+            
+            $transaction->bill->update(['status' => $billStatus]);
         });
 
         return back()->with('success', 'Transaksi berhasil diupdate menjadi Success.');
@@ -95,5 +123,5 @@ class BillController extends Controller
         });
 
         return back()->with('success', 'Transaksi berhasil diupdate menjadi Failed.');
-    }
+}
 }

@@ -43,6 +43,8 @@ interface BillData {
     start_date: string;
     due_date: string;
     status: string;
+    payment_scheme: string;
+    dp_amount: number | null;
 }
 
 interface DetailItem {
@@ -178,6 +180,10 @@ const timelineIcon = (s: string) => {
                             <p class="text-sm font-medium uppercase">{{ transaction.midtrans_method ?? '-' }}</p>
                         </div>
                         <div>
+                            <p class="text-xs text-muted-foreground">Tipe Transaksi</p>
+                            <p class="text-sm font-medium capitalize">{{ (transaction as any).transaction_type ?? 'Full Payment' }}</p>
+                        </div>
+                        <div>
                             <p class="text-xs text-muted-foreground">Status</p>
                             <span :class="statusBadge(transaction.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
                                 {{ transaction.status }}
@@ -216,6 +222,14 @@ const timelineIcon = (s: string) => {
                             <div>
                                 <p class="text-xs text-muted-foreground">Periode</p>
                                 <p class="text-sm font-medium">{{ bill.start_date }} — {{ bill.due_date }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-muted-foreground">Skema Pembayaran</p>
+                                <p class="text-sm font-medium capitalize">{{ bill.payment_scheme === 'dp' ? 'Down Payment' : 'Full Pay' }}</p>
+                            </div>
+                            <div v-if="bill.payment_scheme === 'dp'">
+                                <p class="text-xs text-muted-foreground">Nominal DP</p>
+                                <p class="text-sm font-medium">{{ formatCurrency(bill.dp_amount || 0) }}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-muted-foreground">Total Bill</p>

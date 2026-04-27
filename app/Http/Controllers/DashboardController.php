@@ -38,14 +38,14 @@ class DashboardController extends Controller
 
         // ── Bills & Revenue ─────────────────────────────────────
         $unpaidBills       = Bill::where('status', 'unpaid')->count();
-        $paidBills         = Bill::where('status', 'paid')->count();
-        $pendingSignatures = Bill::where('status', 'paid')
+        $paidBills         = Bill::whereIn('status', ['paid', 'down_payment', 'finished_payment'])->count();
+        $pendingSignatures = Bill::whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->whereNull('signature')
             ->whereDate('start_date', '<=', $today)
             ->count();
         $refundRequests    = Bill::where('status', 'refund_request')->count();
 
-        $totalRevenue   = (float) Bill::where('status', 'paid')->sum('total_price');
+        $totalRevenue   = (float) Bill::whereIn('status', ['paid', 'finished_payment'])->sum('total_price') + (float) Bill::where('status', 'down_payment')->sum('dp_amount');
         $pendingRevenue = (float) Bill::where('status', 'unpaid')->sum('total_price');
 
         // ── Transactions ────────────────────────────────────────
