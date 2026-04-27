@@ -88,13 +88,13 @@ const submit = () => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="min-h-screen bg-muted/40">
-            <div class="max-w-3xl mx-auto px-16 py-8">
+            <div class="max-w-7xl mx-auto px-6 py-10">
+                <Heading :title="isEdit ? 'Edit User' : 'Tambah User'"
+                description="Tambahkan atau edit data user sesuai kebutuhan" />
                 <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
-            <Heading :title="isEdit ? 'Edit User' : 'Tambah User'"
-            description="Tambahkan atau edit data user sesuai kebutuhan" />
 
-            <div class="mx-auto w-full max-w-xl">
+            <div class="mx-auto w-full max-w-7xl">
                 <form @submit.prevent="submit" class="space-y-6">
                     <!-- Name -->
                     <div class="grid gap-2">
