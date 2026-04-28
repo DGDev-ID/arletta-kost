@@ -28,12 +28,20 @@ return new class extends Migration
         END$$;
     ");
 
+        // ✅ DROP DEFAULT DULU (INI YANG KURANG)
+        DB::statement("
+        ALTER TABLE bills 
+        ALTER COLUMN status DROP DEFAULT;
+    ");
+
+        // ✅ Baru ubah tipe
         DB::statement("
         ALTER TABLE bills 
         ALTER COLUMN status TYPE bill_status 
         USING status::text::bill_status;
     ");
 
+        // ✅ Set default lagi
         DB::statement("
         ALTER TABLE bills 
         ALTER COLUMN status SET DEFAULT 'unpaid';
