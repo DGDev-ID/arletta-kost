@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->date('due_date');
             $table->string('signature')->nullable();
-            $table->enum('status', ['paid', 'unpaid', 'cancelled', 'refund_request', 'refund'])->default('unpaid');
+            $table->enum('status', ['paid', 'unpaid', 'cancelled', 'refund_request', 'refund', 'checked_out'])->default('unpaid');
             $table->timestamps();
         });
     }
