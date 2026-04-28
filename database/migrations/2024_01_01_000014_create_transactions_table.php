@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bill_id')->constrained('bills')->cascadeOnDelete();
             $table->string('order_id')->unique();
+            $table->enum('transaction_type', ['full_payment', 'down_payment', 'finished_payment'])->default('full_payment');
             $table->enum('payment_type', ['manual', 'midtrans']);
             $table->enum('midtrans_method', ['va', 'qris'])->nullable();
             $table->decimal('transaction_fee', 15, 2)->default(0);

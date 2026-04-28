@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -13,6 +14,8 @@ return new class extends Migration
             $table->foreignId('room_id')->constrained('rooms')->cascadeOnDelete();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->decimal('total_price', 15, 2);
+            $table->string('payment_scheme')->default('full_pay');
+            $table->decimal('dp_amount', 15, 2)->nullable();
             $table->date('start_date');
             $table->date('due_date');
             $table->string('signature')->nullable();
