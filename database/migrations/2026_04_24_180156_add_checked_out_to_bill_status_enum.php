@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -11,7 +12,32 @@ return new class extends Migration
      */
     public function up(): void
     {
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE bills MODIFY COLUMN status ENUM('paid', 'unpaid', 'cancelled', 'refund_request', 'refund', 'checked_out') DEFAULT 'unpaid'");
+        DB::statement("
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bill_status') THEN
+                CREATE TYPE bill_status AS ENUM (
+                    'paid',
+                    'unpaid',
+                    'cancelled',
+                    'refund_request',
+                    'refund',
+                    'checked_out'
+                );
+            END IF;
+        END$$;
+    ");
+
+        DB::statement("
+        ALTER TABLE bills 
+        ALTER COLUMN status TYPE bill_status 
+        USING status::text::bill_status;
+    ");
+
+        DB::statement("
+        ALTER TABLE bills 
+        ALTER COLUMN status SET DEFAULT 'unpaid';
+    ");
     }
 
     /**
@@ -19,6 +45,30 @@ return new class extends Migration
      */
     public function down(): void
     {
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE bills MODIFY COLUMN status ENUM('paid', 'unpaid', 'cancelled', 'refund_request', 'refund') DEFAULT 'unpaid'");
+        DB::statement("ALTER TABLE bills ALTER COLUMN status DROP DEFAULT;");
+
+        DB::statement("
+        CREATE TYPE bill_status_old AS ENUM (
+            'paid',
+            'unpaid',
+            'cancelled',
+            'refund_request',
+            'refund'
+        );
+    ");
+
+        DB::statement("
+        ALTER TABLE bills 
+        ALTER COLUMN status TYPE bill_status_old 
+        USING status::text::bill_status_old;
+    ");
+
+        DB::statement("DROP TYPE bill_status;");
+        DB::statement("ALTER TYPE bill_status_old RENAME TO bill_status;");
+
+        DB::statement("
+        ALTER TABLE bills 
+        ALTER COLUMN status SET DEFAULT 'unpaid';
+    ");
     }
 };
