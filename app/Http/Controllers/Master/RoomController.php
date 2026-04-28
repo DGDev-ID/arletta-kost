@@ -50,6 +50,7 @@ class RoomController extends Controller
                 'name' => $cat->name,
                 'kost_name' => $cat->kost->name,
                 'kost_id' => $cat->kost_id,
+                'gender' => $cat->gender,
             ]);
 
         $kosts = Kost::select('id', 'name')->get();
@@ -71,6 +72,7 @@ class RoomController extends Controller
                 'name' => $cat->name,
                 'kost_name' => $cat->kost->name,
                 'kost_id' => $cat->kost_id,
+                'gender' => $cat->gender,
             ]);
 
         $kosts = Kost::select('id', 'name')->get();
@@ -87,10 +89,13 @@ class RoomController extends Controller
             'room_category_id' => 'required|exists:room_categories,id',
             'room_number' => 'required|string|max:50|unique:rooms,room_number',
             'status' => 'required|in:available,occupied,maintenance',
-            'gender' => 'required|in:male,female,mixed',
         ], [
             'room_number.unique' => 'Nomor kamar sudah digunakan.',
         ]);
+
+        // Auto-assign gender from selected room category
+        $cat = RoomCategory::find($validated['room_category_id']);
+        $validated['gender'] = $cat?->gender ?? 'mixed';
 
         Room::create($validated);
 
@@ -106,6 +111,7 @@ class RoomController extends Controller
                 'name' => $cat->name,
                 'kost_name' => $cat->kost->name,
                 'kost_id' => $cat->kost_id,
+                'gender' => $cat->gender,
             ]);
 
         $kosts = Kost::select('id', 'name')->get();
@@ -126,6 +132,10 @@ class RoomController extends Controller
         ], [
             'room_number.unique' => 'Nomor kamar sudah digunakan.',
         ]);
+
+        // Auto-assign gender from selected room category when updating
+        $cat = RoomCategory::find($validated['room_category_id']);
+        $validated['gender'] = $cat?->gender ?? 'mixed';
 
         $room->update($validated);
 

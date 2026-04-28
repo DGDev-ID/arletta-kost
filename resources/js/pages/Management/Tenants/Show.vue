@@ -184,12 +184,6 @@ watch(() => billForm.category_id, () => {
     billForm.due_date = '';
 });
 
-// Reset pricing when room changes
-watch(() => billForm.room_id, () => {
-    billForm.pricing_id = '';
-    billForm.total_price = 0;
-    billForm.due_date = '';
-});
 
 const submitBill = () => {
     billForm.post(route('management.bills.store'), {

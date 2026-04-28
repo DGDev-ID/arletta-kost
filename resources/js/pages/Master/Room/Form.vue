@@ -16,6 +16,7 @@ interface CategoryItem {
     name: string;
     kost_name: string;
     kost_id: number;
+    gender?: string | null;
 }
 
 interface KostItem {
@@ -28,6 +29,7 @@ interface RoomData {
     room_category_id: number;
     room_number: string;
     status: string;
+    gender?: string;
 }
 
 const props = defineProps<{
@@ -91,6 +93,16 @@ const submit = () => {
         form.post(route('master.rooms.store'));
     }
 };
+
+// Auto-fill gender based on selected category and disable manual change
+watch(() => form.room_category_id, (val) => {
+    const cat = props.categories.find((c) => Number(c.id) === Number(val));
+    if (cat && cat.gender) {
+        form.gender = cat.gender;
+    } else {
+        form.gender = 'mixed';
+    }
+}, { immediate: true });
 
 // Refresh categories after modal closes
 watch(showCategoryModal, (open) => {
@@ -162,6 +174,7 @@ watch(showCategoryModal, (open) => {
                         <select
                             id="gender"
                             v-model="form.gender"
+                            disabled
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         >
                             <option value="male">Laki-laki</option>

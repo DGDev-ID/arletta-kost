@@ -12,6 +12,7 @@ class RoomCategory extends Model
         'kost_id',
         'name',
         'description',
+        'gender',
     ];
 
     public function kost(): BelongsTo

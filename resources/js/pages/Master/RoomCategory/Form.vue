@@ -45,6 +45,7 @@ interface CategoryData {
     kost_id: number;
     name: string;
     description: string | null;
+    gender?: string | null;
     images: ImageItem[];
     details: DetailItem[];
 }
@@ -65,6 +66,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 // Form state
 const kost_id = ref(props.category?.kost_id ?? '');
 const name = ref(props.category?.name ?? '');
+const gender = ref<string | null>(props.category?.gender ?? 'mixed');
 const description = ref(props.category?.description ?? '');
 const details = ref<DetailItem[]>(props.category?.details?.map(d => ({ ...d })) ?? []);
 const pricings = ref<PricingItem[]>(props.category?.pricings?.map((p: any) => ({
@@ -163,6 +165,7 @@ const submit = () => {
     const formData = new FormData();
     formData.append('kost_id', String(kost_id.value));
     formData.append('name', name.value);
+    formData.append('gender', String(gender.value ?? ''));
     formData.append('description', description.value);
 
     // Images
@@ -242,6 +245,21 @@ const submit = () => {
                         <Label for="name">Nama Kategori</Label>
                         <Input id="name" v-model="name" placeholder="Contoh: Standard, Deluxe" />
                         <InputError :message="errors.name" />
+                    </div>
+
+                    <!-- Gender -->
+                    <div class="grid gap-2">
+                        <Label for="gender">Gender</Label>
+                        <select
+                            id="gender"
+                            v-model="gender"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="mixed">Mixed</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                        <InputError :message="errors.gender" />
                     </div>
 
                     <!-- Description -->

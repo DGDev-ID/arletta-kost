@@ -32,6 +32,7 @@ class RoomCategoryController extends Controller
                 'id' => $cat->id,
                 'name' => $cat->name,
                 'description' => $cat->description,
+                'gender' => $cat->gender,
                 'kost_id' => $cat->kost_id,
                 'kost_name' => $cat->kost->name,
             ]);
@@ -52,6 +53,7 @@ class RoomCategoryController extends Controller
                 'id' => $cat->id,
                 'name' => $cat->name,
                 'description' => $cat->description,
+                'gender' => $cat->gender,
                 'kost_id' => $cat->kost_id,
                 'kost_name' => $cat->kost->name,
                 'images_count' => $cat->images->count(),
@@ -86,6 +88,7 @@ class RoomCategoryController extends Controller
         $validated = $request->validate([
             'kost_id' => 'required|exists:m_kosts,id',
             'name' => 'required|string|max:255',
+            'gender' => 'nullable|in:male,female,mixed',
             'description' => 'nullable|string',
             'images' => 'nullable|array',
             'images.*' => 'image|max:15360',
@@ -104,6 +107,7 @@ class RoomCategoryController extends Controller
                 'kost_id' => $validated['kost_id'],
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                'gender' => $validated['gender'] ?? null,
             ]);
 
             // Handle images with S3Helper
@@ -162,6 +166,7 @@ class RoomCategoryController extends Controller
                 'kost_id' => $roomCategory->kost_id,
                 'name' => $roomCategory->name,
                 'description' => $roomCategory->description,
+                'gender' => $roomCategory->gender,
                 'images' => $roomCategory->images->map(fn($img) => [
                     'id' => $img->id,
                     'img_url' => $img->img_url,
@@ -193,6 +198,7 @@ class RoomCategoryController extends Controller
             $validated = $request->validate([
                 'kost_id' => 'required|exists:m_kosts,id',
                 'name' => 'required|string|max:255',
+                'gender' => 'nullable|in:male,female,mixed',
                 'description' => 'nullable|string',
             ]);
 
@@ -205,6 +211,7 @@ class RoomCategoryController extends Controller
                     'id' => $roomCategory->id,
                     'name' => $roomCategory->name,
                     'description' => $roomCategory->description,
+                    'gender' => $roomCategory->gender,
                     'kost_id' => $roomCategory->kost_id,
                     'kost_name' => $roomCategory->kost->name,
                 ],
@@ -214,6 +221,7 @@ class RoomCategoryController extends Controller
         $validated = $request->validate([
             'kost_id' => 'required|exists:m_kosts,id',
             'name' => 'required|string|max:255',
+            'gender' => 'nullable|in:male,female,mixed',
             'description' => 'nullable|string',
             'images' => 'nullable|array',
             'images.*' => 'image|max:15360',
@@ -237,6 +245,7 @@ class RoomCategoryController extends Controller
                 'kost_id' => $validated['kost_id'],
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                'gender' => $validated['gender'] ?? null,
             ]);
 
             // Remove deleted images

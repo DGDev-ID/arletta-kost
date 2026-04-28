@@ -19,6 +19,7 @@ interface CategoryItem {
     description: string | null;
     kost_id: number;
     kost_name: string;
+    gender?: string | null;
 }
 
 interface KostItem {
@@ -37,7 +38,7 @@ const errors = ref<Record<string, string>>({});
 
 const showForm = ref(false);
 const editingCategory = ref<CategoryItem | null>(null);
-const formData = ref({ kost_id: '', name: '', description: '' });
+const formData = ref({ kost_id: '', name: '', description: '', gender: 'mixed' });
 
 const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -68,7 +69,7 @@ const fetchKosts = async () => {
 
 const openCreateForm = () => {
     editingCategory.value = null;
-    formData.value = { kost_id: '', name: '', description: '' };
+    formData.value = { kost_id: '', name: '', description: '', gender: 'mixed' };
     errors.value = {};
     showForm.value = true;
 };
@@ -79,6 +80,7 @@ const openEditForm = (cat: CategoryItem) => {
         kost_id: String(cat.kost_id),
         name: cat.name,
         description: cat.description ?? '',
+        gender: cat.gender ?? 'mixed',
     };
     errors.value = {};
     showForm.value = true;
@@ -123,6 +125,7 @@ const saveCategory = async () => {
                 kost_id: Number(formData.value.kost_id),
                 name: formData.value.name,
                 description: formData.value.description || null,
+                gender: formData.value.gender || null,
             }),
         });
 
