@@ -224,7 +224,7 @@ class RoomCategoryController extends Controller
             'gender' => 'nullable|in:male,female,mixed',
             'description' => 'nullable|string',
             'images' => 'nullable|array',
-            'images.*' => 'image|max:15360',
+            'images.*' => 'image|max:20480',
             'removed_images' => 'nullable|array',
             'removed_images.*' => 'integer|exists:room_category_images,id',
             'details' => 'nullable|array',
