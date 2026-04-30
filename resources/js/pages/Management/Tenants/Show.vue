@@ -255,8 +255,21 @@ watch(() => billForm.category_id, () => {
     }
 });
 
+// Minimum selectable start date (today, local timezone)
+const minStartDate = computed(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+});
+
 
 const submitBill = () => {
+    // Prevent submitting with start_date in the past
+    if (billForm.start_date && billForm.start_date < minStartDate.value) {
+        toastError('Tanggal mulai tidak boleh sebelum hari ini.');
+        return;
+    }
+
     billForm.post(route('management.bills.store'), {
         preserveScroll: true,
         onSuccess: () => {
@@ -656,8 +669,8 @@ const allBills = computed(() => props.bills);
 
         <!-- Create Bill Dialog -->
         <Dialog v-model:open="showBillDialog">
-            <DialogContent class="sm:max-w-md">
-                <DialogHeader>
+            <DialogContent class="max-h-[85vh] overflow-y-auto hide-scrollbar sm:max-w-md">
+                <DialogHeader >
                     <DialogTitle>Buat Bill Baru</DialogTitle>
                     <DialogDescription> Buat tagihan untuk {{ tenant.name }}. </DialogDescription>
                 </DialogHeader>
@@ -721,7 +734,7 @@ const allBills = computed(() => props.bills);
                     <!-- Start Date -->
                     <div class="grid gap-2">
                         <Label for="start_date">Tanggal Mulai</Label>
-                        <Input id="start_date" v-model="billForm.start_date" type="date" />
+                        <Input id="start_date" v-model="billForm.start_date" type="date" :min="minStartDate" />
                     </div>
 
                     <!-- [MONTHLY] Pricing dropdown -->
@@ -884,3 +897,14 @@ const allBills = computed(() => props.bills);
         </Dialog>
     </AppLayout>
 </template>
+
+<style>
+/* Hide native scrollbars but keep scrolling behavior */
+.hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+</style>
