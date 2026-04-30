@@ -18,7 +18,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { LogOut, Search } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 
 const { success: toastSuccess, error: toastError } = useToast();
 

@@ -25,9 +25,9 @@ export function useToast() {
     };
 
     const success = (message: string, duration?: number) => add(message, 'success', duration);
-    const error   = (message: string, duration?: number) => add(message, 'error', duration ?? 5000);
+    const error = (message: string, duration?: number) => add(message, 'error', duration ?? 5000);
     const warning = (message: string, duration?: number) => add(message, 'warning', duration);
-    const info    = (message: string, duration?: number) => add(message, 'info', duration);
+    const info = (message: string, duration?: number) => add(message, 'info', duration);
 
     return { toasts, add, remove, success, error, warning, info };
 }
