@@ -169,7 +169,7 @@ watch(showCategoryModal, (open) => {
                     </div>
 
                     <!-- Gender -->
-                    <div class="grid gap-2">
+                    <!-- <div class="grid gap-2">
                         <Label for="gender">Tipe Kamar</Label>
                         <select
                             id="gender"
@@ -182,7 +182,7 @@ watch(showCategoryModal, (open) => {
                             <option value="mixed">Campur</option>
                         </select>
                         <InputError :message="form.errors.gender" />
-                    </div>
+                    </div> -->
 
                     <!-- Status (hidden when editing) -->
                     <div v-if="!isEdit" class="grid gap-2">

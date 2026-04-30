@@ -5,11 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { LoaderCircle, Plus, Trash2, Upload, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { formatRupiah } from '@/lib/currency';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface KostItem {
     id: number;
@@ -204,10 +207,12 @@ const submit = () => {
         forceFormData: true,
         onSuccess: () => {
             processing.value = false;
+            toastSuccess(isEdit.value ? 'Kategori berhasil diperbarui.' : 'Kategori berhasil ditambahkan.');
         },
         onError: (e) => {
             errors.value = e as Record<string, string>;
             processing.value = false;
+            toastError('Gagal menyimpan kategori. Periksa kembali form.');
         },
     });
 };

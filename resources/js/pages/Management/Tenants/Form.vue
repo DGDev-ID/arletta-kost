@@ -30,8 +30,8 @@ const isEdit = computed(() => !!props.tenant);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Tenants', href: '/management/tenants' },
-    { title: isEdit.value ? 'Edit Tenant' : 'Tambah Tenant', href: '#' },
+    { title: 'Penyewa', href: '/management/tenants' },
+    { title: isEdit.value ? 'Edit Penyewa' : 'Tambah Penyewa', href: '#' },
 ];
 
 const form = useForm({
@@ -55,15 +55,15 @@ const submit = () => {
 </script>
 
 <template>
-    <Head :title="isEdit ? 'Edit Tenant' : 'Tambah Tenant'" />
+    <Head :title="isEdit ? 'Edit Penyewa' : 'Tambah Penyewa'" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="min-h-screen bg-muted/40">
             <div class="max-w-7xl mx-auto px-6 py-8">
                 <div class="rounded-2xl border bg-background shadow-sm p-8 space-y-8">
 
-            <Heading :title="isEdit ? 'Edit Tenant' : 'Tambah Tenant'"
-            description="Tambahkan atau edit data tenant sesuai kebutuhan" />
+            <Heading :title="isEdit ? 'Edit Penyewa' : 'Tambah Penyewa'"
+            description="Tambahkan atau edit data penyewa sesuai kebutuhan" />
 
             <form @submit.prevent="submit" class="space-y-6">
 

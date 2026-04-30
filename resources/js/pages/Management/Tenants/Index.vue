@@ -13,11 +13,14 @@ import {
 import { Input } from '@/components/ui/input';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { Eye, FileText, FileTextIcon, Pencil, Plus, Search, Trash2 } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface TenantItem {
     id: number;
@@ -55,17 +58,13 @@ const props = defineProps<{
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Tenants', href: '/management/tenants' },
+    { title: 'Penyewa', href: '/management/tenants' },
 ];
 
 const search = ref(props.filters.search ?? '');
 const showDeleteDialog = ref(false);
 const tenantToDelete = ref<TenantItem | null>(null);
 
-const flash = computed(() => {
-    const page = router.page as any;
-    return page?.props?.flash as { success?: string; error?: string } | undefined;
-});
 
 const applyFilter = useDebounceFn(() => {
     router.get(
@@ -85,6 +84,12 @@ const confirmDelete = (tenant: TenantItem) => {
 const deleteTenant = () => {
     if (!tenantToDelete.value) return;
     router.delete(route('management.tenants.destroy', tenantToDelete.value.id), {
+        onSuccess: () => {
+            toastSuccess('Tenant berhasil dihapus.');
+        },
+        onError: () => {
+            toastError('Gagal menghapus tenant.');
+        },
         onFinish: () => {
             showDeleteDialog.value = false;
             tenantToDelete.value = null;
@@ -105,25 +110,17 @@ const deleteTenant = () => {
 
                 <div class="flex flex-row justify-between items-center">
                     <Heading
-                        title="Manage Tenants"
-                        :description="`Kelola data tenant terdaftar. Total Tenants: ${tenants.total}`"
+                        title="Manage Penyewa"
+                        :description="`Kelola data penyewa terdaftar. Total Penyewa: ${tenants.total}`"
                     />
 
                     <Button as-child>
                         <Link :href="route('management.tenants.create')">
                             <Plus class="w-4 h-4 mr-1" />
-                            Tambah Tenant
+                            Tambah Penyewa
                         </Link>
                     </Button>
                 </div>
-            </div>
-
-            <!-- Flash message -->
-            <div
-                v-if="flash?.success"
-                class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-            >
-                {{ flash.success }}
             </div>
 
             <!-- Search -->

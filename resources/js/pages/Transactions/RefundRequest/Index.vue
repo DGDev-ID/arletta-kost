@@ -12,10 +12,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { CheckCircle, XCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface BillItem {
     id: number;
@@ -77,12 +80,23 @@ const confirmAction = (billId: number, action: 'approve' | 'reject') => {
 const proceedAction = () => {
     if (!confirmDialog.value.billId) return;
 
-    const routeName = confirmDialog.value.action === 'approve' 
-        ? 'transactions.refund-requests.approve' 
+    const isApprove = confirmDialog.value.action === 'approve';
+    const routeName = isApprove
+        ? 'transactions.refund-requests.approve'
         : 'transactions.refund-requests.reject';
-    
+
     router.patch(route(routeName, confirmDialog.value.billId), {}, {
         preserveScroll: true,
+        onSuccess: () => {
+            if (isApprove) {
+                toastSuccess('Refund berhasil disetujui.');
+            } else {
+                toastError('Refund ditolak.');
+            }
+        },
+        onError: () => {
+            toastError('Gagal memproses refund.');
+        },
         onFinish: () => {
             confirmDialog.value.show = false;
         }

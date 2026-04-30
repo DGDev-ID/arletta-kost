@@ -14,11 +14,14 @@ import {
 import { Input } from '@/components/ui/input';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { Pencil, Plus, Search, Settings, Trash2, List } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface RoomItem {
     id: number;
@@ -76,10 +79,6 @@ const showCategoryModal = ref(false);
 const showDeleteDialog = ref(false);
 const roomToDelete = ref<RoomItem | null>(null);
 
-const flash = computed(() => {
-    const page = router.page as any;
-    return page?.props?.flash as { success?: string; error?: string } | undefined;
-});
 
 const applyFilter = useDebounceFn(() => {
     router.get(
@@ -109,6 +108,12 @@ const confirmDelete = (room: RoomItem) => {
 const deleteRoom = () => {
     if (!roomToDelete.value) return;
     router.delete(route('master.rooms.destroy', roomToDelete.value.id), {
+        onSuccess: () => {
+            toastSuccess('Room berhasil dihapus.');
+        },
+        onError: () => {
+            toastError('Gagal menghapus room.');
+        },
         onFinish: () => {
             showDeleteDialog.value = false;
             roomToDelete.value = null;
@@ -124,7 +129,7 @@ const deleteRoom = () => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="min-h-screen bg-muted/40 py-10">
-            <div class="max-w-7xl mx-auto px-6 space-y-8">
+            <div class="max-w-7xl mx-auto px-6 space-y-4">
 
             <!-- Header -->
             <div class="flex flex-col justify-between gap-4">
@@ -146,14 +151,6 @@ const deleteRoom = () => {
                         </Link>
                     </div>
                 </div>
-            </div>
-
-            <!-- Flash message -->
-            <div
-                v-if="flash?.success"
-                class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-            >
-                {{ flash.success }}
             </div>
 
             <!-- Filters -->

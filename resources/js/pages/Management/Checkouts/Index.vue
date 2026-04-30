@@ -13,11 +13,14 @@ import {
 import { Input } from '@/components/ui/input';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { LogOut, Search } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface OccupancyItem {
     tenant_id: number;
@@ -55,6 +58,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Check Out', href: '/management/checkouts' },
 ];
 
+const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    
+    // Memisahkan string "YYYY-MM-DD" menjadi array ["YYYY", "MM", "DD"]
+    const parts = dateString.split(' ')[0].split('-'); 
+    
+    if (parts.length === 3) {
+        // Gabungkan kembali dengan format DD-MM-YYYY
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    
+    return dateString;
+};
+
 const search = ref(props.filters.search ?? '');
 const showCheckoutDialog = ref(false);
 const occupancyToCheckout = ref<OccupancyItem | null>(null);
@@ -85,6 +102,12 @@ const processCheckout = () => {
         tenant: occupancyToCheckout.value.tenant_id,
         room: occupancyToCheckout.value.room_id
     }), {}, {
+        onSuccess: () => {
+            toastSuccess('Check out berhasil diproses.');
+        },
+        onError: () => {
+            toastError('Gagal melakukan check out.');
+        },
         onFinish: () => {
             showCheckoutDialog.value = false;
             occupancyToCheckout.value = null;
@@ -108,14 +131,6 @@ const processCheckout = () => {
                             :description="`Proses check out tenant dari kamar. Total Penghuni: ${occupancies.total}`"
                         />
                     </div>
-                </div>
-
-                <!-- Flash message -->
-                <div
-                    v-if="flash?.success"
-                    class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-                >
-                    {{ flash.success }}
                 </div>
 
                 <!-- Search -->
@@ -146,9 +161,9 @@ const processCheckout = () => {
                                 <td class="px-4 py-3 font-semibold">{{ occ.room_number }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div v-if="occ.start_date || occ.due_date" class="text-xs">
-                                        <span>{{ occ.start_date ?? '-' }}</span>
+                                        <span>{{ formatDate(occ.start_date) }}</span>
                                         <span class="mx-1 text-muted-foreground">→</span>
-                                        <span>{{ occ.due_date ?? '-' }}</span>
+                                        <span>{{ formatDate(occ.due_date) }}</span>
                                     </div>
                                     <span v-else class="text-xs text-muted-foreground">-</span>
                                 </td>

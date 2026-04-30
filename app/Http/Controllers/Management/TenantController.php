@@ -148,26 +148,54 @@ class TenantController extends Controller
             ]);
 
         // Categories with their pricings (for the Create Bill form)
-        $categories = RoomCategory::with(['kost', 'pricings'])
-            ->whereHas('rooms', fn($q) => $q->where('status', '!=', 'maintenance'))
-            ->get()
+        $categoriesQuery = RoomCategory::with(['kost', 'pricings'])
+            ->whereHas('rooms', fn($q) => $q->where('status', '!=', 'maintenance'));
+
+        // If tenant has a specific gender, only include categories that are either null (unisex) or match tenant gender
+        if ($tenant->gender) {
+            $categoriesQuery->where(function ($q) use ($tenant) {
+                $q->whereNull('gender')
+                  ->orWhere('gender', $tenant->gender);
+            });
+        }
+
+        $categories = $categoriesQuery->get()
             ->map(fn(RoomCategory $cat) => [
-                'id' => $cat->id,
-                'name' => $cat->name,
-                'kost_name' => $cat->kost->name,
-                'pricings' => $cat->pricings->map(fn($p) => [
-                    'id' => $p->id,
+                'id'          => $cat->id,
+                'name'        => $cat->name,
+                'kost_name'   => $cat->kost->name,
+                // pricing dengan duration_days == 1 dianggap sebagai harga harian
+                'daily_price' => (float) ($cat->pricings->firstWhere('duration_days', 1)?->price ?? 0),
+                'pricings'    => $cat->pricings
+                    ->filter(fn($p) => $p->duration_days !== 1) // sembunyikan pricing harian dari list paket
+                    ->values()
+                    ->map(fn($p) => [
+                        'id'            => $p->id,
+                        'duration_days' => $p->duration_days,
+                        'price'         => (float) $p->price,
+                    ])->toArray(),
+                'all_pricings' => $cat->pricings->map(fn($p) => [
+                    'id'            => $p->id,
                     'duration_days' => $p->duration_days,
-                    'price' => (float) $p->price,
+                    'price'         => (float) $p->price,
                 ])->toArray(),
             ]);
 
         // All non-maintenance rooms with their occupied periods for date-based filtering
-        $availableRooms = Room::with(['roomCategory.kost', 'bills' => function ($q) {
+        $availableRoomsQuery = Room::with(['roomCategory.kost', 'bills' => function ($q) {
             $q->whereIn('status', ['paid', 'unpaid', 'down_payment', 'finished_payment'])->select('id', 'room_id', 'start_date', 'due_date', 'status');
         }])
-            ->where('status', '!=', 'maintenance')
-            ->get()
+            ->where('status', '!=', 'maintenance');
+
+        // If tenant has a specific gender, only include rooms whose category is unisex (null) or matches tenant gender
+        if ($tenant->gender) {
+            $availableRoomsQuery->whereHas('roomCategory', function ($q) use ($tenant) {
+                $q->whereNull('gender')
+                  ->orWhere('gender', $tenant->gender);
+            });
+        }
+
+        $availableRooms = $availableRoomsQuery->get()
             ->map(fn(Room $room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,

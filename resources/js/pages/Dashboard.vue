@@ -73,224 +73,164 @@ const statusBadge = (status: string) => {
     };
     return map[status] ?? 'bg-gray-100 text-gray-700';
 };
+
+// Data dummy untuk grafik chart (Bisa diganti dengan data dari props/backend nantinya)
+const dummyChartData = [
+    { day: '23 Apr', value: 30, label: '300rb' },
+    { day: '24 Apr', value: 45, label: '450rb' },
+    { day: '25 Apr', value: 25, label: '250rb' },
+    { day: '26 Apr', value: 60, label: '600rb' },
+    { day: '27 Apr', value: 80, label: '800rb' },
+    { day: '28 Apr', value: 50, label: '500rb' },
+    { day: '29 Apr', value: 100, label: '1jt' },
+];
+
+// Kalkulasi untuk Radial Chart (Circle)
+const circleRadius = 36;
+const circleCircumference = 2 * Math.PI * circleRadius;
+const occupancyStrokeDashoffset = circleCircumference - (props.stats.occupancy_rate / 100) * circleCircumference;
 </script>
 
 <template>
     <Head title="Dashboard" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-            <!-- Section: Master Data -->
-            <div>
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Master Data</h3>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <!-- Total Kost -->
-                    <div class="group relative overflow-hidden rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Total Kost</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.total_kosts }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                <Building class="h-5 w-5" />
-                            </div>
+        <div class="flex h-full flex-1 flex-col gap-6 p-4 md:p-6 bg-slate-50/50 dark:bg-background">
+            
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl border bg-background p-5 shadow-sm">
+                    <div class="flex items-center justify-between pb-2">
+                        <p class="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                            <Banknote class="h-4 w-4" />
                         </div>
                     </div>
+                    <div>
+                        <p class="text-2xl font-bold tracking-tight">{{ formatCurrency(stats.total_revenue) }}</p>
+                        <p class="text-xs text-muted-foreground mt-1 text-green-600 dark:text-green-400 flex items-center">
+                            <TrendingUp class="w-3 h-3 mr-1"/> +12.5% vs bulan lalu
+                        </p>
+                    </div>
+                </div>
 
-                    <!-- Total Categories -->
-                    <div class="group relative overflow-hidden rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Kategori Kamar</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.total_room_categories }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                                <FolderTree class="h-5 w-5" />
-                            </div>
+                <div class="rounded-xl border bg-background p-5 shadow-sm">
+                    <div class="flex items-center justify-between pb-2">
+                        <p class="text-sm font-medium text-muted-foreground">Total Transaksi</p>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
+                            <Wallet class="h-4 w-4" />
                         </div>
                     </div>
+                    <div>
+                        <p class="text-2xl font-bold tracking-tight">{{ stats.total_transactions }}</p>
+                        <p class="text-xs text-muted-foreground mt-1">{{ stats.paid_bills }} lunas, {{ stats.unpaid_bills }} belum</p>
+                    </div>
+                </div>
 
-                    <!-- Total Rooms -->
-                    <div class="group relative overflow-hidden rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Total Kamar</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.total_rooms }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
-                                <BedDouble class="h-5 w-5" />
-                            </div>
+                <div class="rounded-xl border bg-background p-5 shadow-sm">
+                    <div class="flex items-center justify-between pb-2">
+                        <p class="text-sm font-medium text-muted-foreground">Kamar Tersedia</p>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                            <DoorOpen class="h-4 w-4" />
                         </div>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold tracking-tight">{{ stats.available_rooms }}</p>
+                        <p class="text-xs text-muted-foreground mt-1">Dari total {{ stats.total_rooms }} kamar</p>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border bg-background p-5 shadow-sm">
+                    <div class="flex items-center justify-between pb-2">
+                        <p class="text-sm font-medium text-muted-foreground">Pending TTD / Refund</p>
+                        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                            <FileWarning class="h-4 w-4" />
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold tracking-tight text-amber-600">{{ stats.pending_signatures + stats.refund_requests }}</p>
+                        <p class="text-xs text-muted-foreground mt-1">Perlu tindakan segera</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Section: Room Status -->
+            <div class="grid gap-4 lg:grid-cols-3">
+                
+                <div class="lg:col-span-2 rounded-xl border bg-background p-5 shadow-sm flex flex-col">
+                    <h3 class="font-semibold text-sm mb-6">Revenue 7 Hari Terakhir</h3>
+                    <div class="flex-1 flex items-end justify-between gap-2 h-48 mt-auto pt-4 border-b">
+                        <div v-for="(item, index) in dummyChartData" :key="index" class="relative group flex flex-col items-center flex-1">
+                            <div class="absolute -top-8 bg-zinc-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                {{ item.label }}
+                            </div>
+                            <div 
+                                class="w-full max-w-[40px] bg-slate-200 dark:bg-slate-800 rounded-t-sm transition-all duration-300 group-hover:bg-slate-800 dark:group-hover:bg-slate-300"
+                                :style="{ height: `${item.value}%` }"
+                            ></div>
+                            <span class="text-[10px] text-muted-foreground mt-2 absolute -bottom-6">{{ item.day }}</span>
+                        </div>
+                    </div>
+                    <div class="h-6"></div> </div>
+
+                <div class="rounded-xl border bg-background p-5 shadow-sm flex flex-col items-center justify-center">
+                    <h3 class="font-semibold text-sm self-start w-full mb-4">Occupancy Kamar</h3>
+                    <div class="relative flex items-center justify-center mt-4">
+                        <svg class="w-32 h-32 transform -rotate-90">
+                            <circle cx="64" cy="64" :r="circleRadius" class="stroke-slate-100 dark:stroke-slate-800" stroke-width="12" fill="transparent" />
+                            <circle 
+                                cx="64" cy="64" :r="circleRadius" 
+                                class="stroke-slate-800 dark:stroke-slate-200 transition-all duration-1000 ease-out" 
+                                stroke-width="12" fill="transparent" 
+                                stroke-linecap="round"
+                                :stroke-dasharray="circleCircumference"
+                                :stroke-dashoffset="occupancyStrokeDashoffset"
+                            />
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center">
+                            <span class="text-3xl font-bold">{{ stats.occupancy_rate }}%</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-muted-foreground mt-6 text-center">
+                        {{ stats.occupied_rooms }} dari {{ stats.total_rooms }} kamar sedang digunakan
+                    </p>
+                </div>
+            </div>
+
             <div>
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status Kamar</h3>
+                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detail Data</h3>
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Available</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight text-green-600 dark:text-green-400">{{ stats.available_rooms }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                <DoorOpen class="h-5 w-5" />
-                            </div>
+                    <div class="flex items-center p-4 border rounded-xl bg-background shadow-sm">
+                        <div class="p-3 mr-4 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/30 dark:text-blue-400"><Building class="w-5 h-5"/></div>
+                        <div>
+                            <p class="text-xs text-muted-foreground">Total Kost</p>
+                            <p class="text-lg font-semibold">{{ stats.total_kosts }} <span class="text-xs font-normal text-muted-foreground">({{ stats.total_room_categories }} Tipe)</span></p>
                         </div>
                     </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Occupied</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight text-red-600 dark:text-red-400">{{ stats.occupied_rooms }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                                <DoorClosed class="h-5 w-5" />
-                            </div>
+                    <div class="flex items-center p-4 border rounded-xl bg-background shadow-sm">
+                        <div class="p-3 mr-4 bg-yellow-50 text-yellow-600 rounded-lg dark:bg-yellow-900/30 dark:text-yellow-400"><Wrench class="w-5 h-5"/></div>
+                        <div>
+                            <p class="text-xs text-muted-foreground">Kamar Maintenance</p>
+                            <p class="text-lg font-semibold">{{ stats.maintenance_rooms }}</p>
                         </div>
                     </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Maintenance</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight text-yellow-600 dark:text-yellow-400">{{ stats.maintenance_rooms }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                <Wrench class="h-5 w-5" />
-                            </div>
+                    <div class="flex items-center p-4 border rounded-xl bg-background shadow-sm">
+                        <div class="p-3 mr-4 bg-emerald-50 text-emerald-600 rounded-lg dark:bg-emerald-900/30 dark:text-emerald-400"><Users class="w-5 h-5"/></div>
+                        <div>
+                            <p class="text-xs text-muted-foreground">Tenant Aktif</p>
+                            <p class="text-lg font-semibold">{{ stats.total_tenants }}</p>
                         </div>
                     </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Occupancy Rate</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.occupancy_rate }}%</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400">
-                                <TrendingUp class="h-5 w-5" />
-                            </div>
+                    <div class="flex items-center p-4 border rounded-xl bg-background shadow-sm">
+                        <div class="p-3 mr-4 bg-orange-50 text-orange-600 rounded-lg dark:bg-orange-900/30 dark:text-orange-400"><Clock class="w-5 h-5"/></div>
+                        <div>
+                            <p class="text-xs text-muted-foreground">Pending Revenue</p>
+                            <p class="text-lg font-semibold">{{ formatCurrency(stats.pending_revenue) }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section: Management -->
             <div>
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Management</h3>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Tenant Aktif</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.total_tenants }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                <Users class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Total Users</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.total_users }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400">
-                                <Shield class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Pending TTD</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">{{ stats.pending_signatures }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-                                <FileSignature class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Refund Request</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight text-orange-600 dark:text-orange-400">{{ stats.refund_requests }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
-                                <HandCoins class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section: Revenue & Transactions -->
-            <div>
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Revenue & Transaksi</h3>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                                <p class="mt-1 text-2xl font-bold tracking-tight text-green-600 dark:text-green-400">{{ formatCurrency(stats.total_revenue) }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                <Banknote class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Pending Revenue</p>
-                                <p class="mt-1 text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">{{ formatCurrency(stats.pending_revenue) }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-                                <Clock class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Bills Paid</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.paid_bills }}</p>
-                                <p class="mt-0.5 text-xs text-muted-foreground">{{ stats.unpaid_bills }} unpaid</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400">
-                                <FileCheck class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-muted-foreground">Total Transaksi</p>
-                                <p class="mt-1 text-3xl font-bold tracking-tight">{{ stats.total_transactions }}</p>
-                            </div>
-                            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
-                                <Wallet class="h-5 w-5" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section: Recent Bills -->
-            <div>
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tagihan Terbaru</h3>
+                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transaksi Terbaru</h3>
                 <div class="overflow-hidden rounded-xl border bg-background shadow-sm">
                     <table class="w-full text-sm">
                         <thead class="border-b bg-muted/50">
@@ -305,7 +245,7 @@ const statusBadge = (status: string) => {
                         </thead>
                         <tbody>
                             <tr v-if="recentBills.length === 0">
-                                <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada data tagihan.</td>
+                                <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada data transaksi.</td>
                             </tr>
                             <tr v-for="bill in recentBills" :key="bill.id" class="border-b last:border-0 transition-colors hover:bg-muted/30">
                                 <td class="px-4 py-3 font-medium">{{ bill.tenant_name }}</td>

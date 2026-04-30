@@ -15,10 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, CheckCircle, FileText, LoaderCircle, XCircle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface RoomInfo {
     id: number;
@@ -76,7 +79,9 @@ interface CategoryItem {
     id: number;
     name: string;
     kost_name: string;
-    pricings: PricingItem[];
+    daily_price: number;
+    pricings: PricingItem[];      // pricings non-harian (duration_days != 1)
+    all_pricings: PricingItem[];  // semua pricings termasuk harian
 }
 
 interface OccupiedPeriod {
@@ -102,7 +107,7 @@ const props = defineProps<{
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Tenants', href: '/management/tenants' },
+    { title: 'Penyewa', href: '/management/tenants' },
     { title: props.tenant.name, href: '#' },
 ];
 
@@ -121,6 +126,7 @@ const billForm = useForm({
     category_id: '' as number | '',
     room_id: '' as number | '',
     pricing_id: '' as number | '',
+    booking_type: 'monthly' as 'monthly' | 'daily',
     total_price: 0,
     payment_scheme: 'full_pay' as 'full_pay' | 'dp',
     start_date: '',
@@ -151,23 +157,42 @@ const filteredRooms = computed(() => {
     });
 });
 
-// Pricings filtered by selected category
+// Pricings filtered by selected category (exclude daily pricing duration_days==1)
 const filteredPricings = computed(() => {
     if (!billForm.category_id) return [];
     const cat = props.categories.find(c => c.id === billForm.category_id);
-    return cat?.pricings ?? [];
+    return cat?.pricings ?? []; // already filtered on backend (no duration_days==1)
 });
+
+// Harga harian dari kategori yang dipilih
+const selectedCategoryDailyPrice = computed(() => {
+    if (!billForm.category_id) return 0;
+    const cat = props.categories.find(c => c.id === billForm.category_id);
+    return cat?.daily_price ?? 0;
+});
+
+// Apakah kategori yang dipilih mendukung paket harian
+const hasDailyPricing = computed(() => selectedCategoryDailyPrice.value > 0);
 
 const selectedPricing = computed(() => {
     if (!billForm.pricing_id) return null;
     return filteredPricings.value.find((p) => p.id === billForm.pricing_id) ?? null;
 });
 
-// Auto-calculate total_price and due_date when pricing or start_date change
+// Hitung jumlah hari antara start_date dan due_date (untuk mode harian)
+const dailyDays = computed(() => {
+    if (billForm.booking_type !== 'daily' || !billForm.start_date || !billForm.due_date) return 0;
+    const start = new Date(billForm.start_date);
+    const end = new Date(billForm.due_date);
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+});
+
+// Auto-calculate total_price and due_date when pricing or start_date change (monthly)
 watch(
     () => [billForm.pricing_id, billForm.start_date],
     () => {
-        if (selectedPricing.value && billForm.start_date) {
+        if (billForm.booking_type === 'monthly' && selectedPricing.value && billForm.start_date) {
             billForm.total_price = selectedPricing.value.price;
             const start = new Date(billForm.start_date);
             start.setDate(start.getDate() + selectedPricing.value.duration_days);
@@ -176,12 +201,36 @@ watch(
     },
 );
 
+// Auto-calculate total_price when daily days or daily_price change
+watch(
+    () => [dailyDays.value, selectedCategoryDailyPrice.value],
+    () => {
+        if (billForm.booking_type === 'daily') {
+            billForm.total_price = selectedCategoryDailyPrice.value * dailyDays.value;
+        }
+    },
+);
+
+// Reset fields when booking_type changes
+watch(() => billForm.booking_type, (newType) => {
+    billForm.pricing_id = '';
+    billForm.total_price = 0;
+    billForm.due_date = '';
+    if (newType === 'daily') {
+        billForm.pricing_id = '';
+    }
+});
+
 // Reset room and pricing when category changes
 watch(() => billForm.category_id, () => {
     billForm.room_id = '';
     billForm.pricing_id = '';
     billForm.total_price = 0;
     billForm.due_date = '';
+    // Reset booking_type ke monthly bila kategori berubah
+    if (billForm.booking_type === 'daily' && !hasDailyPricing.value) {
+        billForm.booking_type = 'monthly';
+    }
 });
 
 
@@ -190,7 +239,11 @@ const submitBill = () => {
         preserveScroll: true,
         onSuccess: () => {
             showBillDialog.value = false;
-            billForm.reset('category_id', 'room_id', 'pricing_id', 'total_price', 'payment_scheme', 'start_date', 'due_date');
+            billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date');
+            toastSuccess('Bill berhasil dibuat.');
+        },
+        onError: () => {
+            toastError('Gagal membuat bill. Periksa kembali form.');
         },
     });
 };
@@ -213,16 +266,41 @@ const confirmAction = (transactionId: number, action: 'success' | 'failed') => {
 const proceedAction = () => {
     if (!confirmDialog.value.transactionId) return;
 
-    const routeName = confirmDialog.value.action === 'success' 
-        ? 'management.bills.make-success' 
+    const isSuccess = confirmDialog.value.action === 'success';
+    const routeName = isSuccess
+        ? 'management.bills.make-success'
         : 'management.bills.make-failed';
-    
+
     router.patch(route(routeName, confirmDialog.value.transactionId), {}, {
         preserveScroll: true,
+        onSuccess: () => {
+            if (isSuccess) {
+                toastSuccess('Transaksi berhasil disetujui.');
+            } else {
+                toastError('Transaksi ditolak.');
+            }
+        },
+        onError: () => {
+            toastError('Gagal memproses transaksi.');
+        },
         onFinish: () => {
             confirmDialog.value.show = false;
         }
     });
+};
+
+const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    
+    // Memisahkan string "YYYY-MM-DD" menjadi array ["YYYY", "MM", "DD"]
+    const parts = dateString.split(' ')[0].split('-'); 
+    
+    if (parts.length === 3) {
+        // Gabungkan kembali dengan format DD-MM-YYYY
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    
+    return dateString;
 };
 
 // --- Status update ---
@@ -333,8 +411,7 @@ const allBills = computed(() => props.bills);
                     <div >
                         <button
                             @click="showBillDialog = true"
-                            class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            <FileText class="h-4 w-4" />
+                            class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">                            <FileText class="h-4 w-4" />
                             Create Bill
                         </button>
                         <!-- <Link :href="route('management.tenants.edit', tenant.id)"
@@ -343,14 +420,6 @@ const allBills = computed(() => props.bills);
                         </Link> -->
                     </div>
                 </div>
-            </div>
-
-            <!-- Flash message -->
-            <div
-                v-if="flash?.success"
-                class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-            >
-                {{ flash.success }}
             </div>
 
             <!-- All sections shown as cards (Info, Rooms, Bills) -->
@@ -377,7 +446,7 @@ const allBills = computed(() => props.bills);
                     </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Tempat, Tanggal Lahir</p>
-                        <p class="text-sm font-medium">{{ tenant.birth_place ?? '-' }}{{ tenant.birth_date ? `, ${tenant.birth_date}` : '' }}</p>
+                        <p class="text-sm font-medium">{{ tenant.birth_place ?? '-' }}{{ tenant.birth_date ? `, ${formatDate(tenant.birth_date)}` : '' }}</p>
                     </div>
                     <div class="sm:col-span-2 lg:col-span-3">
                         <p class="text-xs text-muted-foreground">Alamat</p>
@@ -394,7 +463,7 @@ const allBills = computed(() => props.bills);
                         <div class="flex items-center justify-between">
                             <p class="text-sm font-semibold">{{ room.room_number }}</p>
                             <span :class="roomStatusBadge(room.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                {{ room.start_date }} sampai {{ room.end_date }}
+                                {{ formatDate (room.start_date) }} sampai {{ formatDate(room.end_date) }}
                             </span>
                         </div>
                         <p class="text-xs text-muted-foreground">{{ room.kost_name }}</p>
@@ -415,7 +484,7 @@ const allBills = computed(() => props.bills);
                                     <th class="px-4 py-3 text-left font-medium">Ruangan</th>
                                     <th class="px-4 py-3 text-left font-medium">Total</th>
                                     <th class="px-4 py-3 text-left font-medium">Mulai</th>
-                                    <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 text-left font-medium">Habis Masa</th>
                                     <th class="px-4 py-3 text-left font-medium">Status</th>
                                     <th class="px-4 py-3 text-left font-medium">Transaction</th>
                                     <th class="px-4 py-3 text-right font-medium">Aksi</th>
@@ -428,8 +497,8 @@ const allBills = computed(() => props.bills);
                                         <p class="text-xs text-muted-foreground">{{ bill.kost_name }}</p>
                                     </td>
                                     <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
-                                    <td class="px-4 py-3">{{ bill.start_date }}</td>
-                                    <td class="px-4 py-3">{{ bill.due_date }}</td>
+                                    <td class="px-4 py-3">{{ formatDate(bill.start_date) }}</td>
+                                    <td class="px-4 py-3">{{ formatDate(bill.due_date) }}</td>
                                     <td class="px-4 py-3">
                                         <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
                                             {{ bill.status }}
@@ -475,7 +544,7 @@ const allBills = computed(() => props.bills);
                                     <th class="px-4 py-3 text-left font-medium">Total Bill</th>
                                     <th class="px-4 py-3 text-left font-medium">Sudah Dibayar</th>
                                     <th class="px-4 py-3 text-left font-medium">Sisa Pembayaran</th>
-                                    <th class="px-4 py-3 text-left font-medium">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 text-left font-medium">Habis Masa</th>
                                     <th class="px-4 py-3 text-left font-medium">Status</th>
                                     <th class="px-4 py-3 text-right font-medium">Aksi</th>
                                 </tr>
@@ -544,8 +613,8 @@ const allBills = computed(() => props.bills);
                                         <p class="text-xs text-muted-foreground">{{ bill.kost_name }}</p>
                                     </td>
                                     <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
-                                    <td class="px-4 py-3">{{ bill.start_date }}</td>
-                                    <td class="px-4 py-3">{{ bill.due_date }}</td>
+                                    <td class="px-4 py-3">{{formatDate (bill.start_date) }}</td>
+                                    <td class="px-4 py-3">{{ formatDate (bill.due_date) }}</td>
                                     <td class="px-4 py-3">
                                         <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
                                             {{ bill.status }} <span v-if="bill.status === 'unpaid' && bill.transactions.some(t => t.status === 'failed')"> (Failed Transaction)</span>
@@ -587,14 +656,49 @@ const allBills = computed(() => props.bills);
                         </select>
                     </div>
 
+                    <!-- Booking Type Toggle -->
+                    <div class="grid gap-2" v-if="billForm.category_id">
+                        <Label>Tipe Durasi</Label>
+                        <div class="flex rounded-md border border-input overflow-hidden">
+                            <button
+                                type="button"
+                                @click="billForm.booking_type = 'monthly'"
+                                :class="billForm.booking_type === 'monthly'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-background text-foreground hover:bg-muted'"
+                                class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                            >
+                                📅 Bulanan
+                            </button>
+                            <button
+                                type="button"
+                                @click="billForm.booking_type = 'daily'"
+                                :disabled="!hasDailyPricing"
+                                :title="!hasDailyPricing ? 'Kategori ini tidak memiliki harga harian' : ''"
+                                :class="billForm.booking_type === 'daily'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-background text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed'"
+                                class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                            >
+                                🗓️ Harian
+                            </button>
+                        </div>
+                        <p v-if="billForm.booking_type === 'daily' && hasDailyPricing" class="text-xs text-muted-foreground">
+                            Harga harian: <strong>{{ formatCurrency(selectedCategoryDailyPrice) }}</strong>/hari
+                        </p>
+                        <p v-if="!hasDailyPricing && billForm.category_id" class="text-xs text-orange-500">
+                            Kategori ini belum memiliki pricing harian (duration_days = 1).
+                        </p>
+                    </div>
+
                     <!-- Start Date -->
                     <div class="grid gap-2">
                         <Label for="start_date">Tanggal Mulai</Label>
                         <Input id="start_date" v-model="billForm.start_date" type="date" />
                     </div>
 
-                    <!-- Pricing -->
-                    <div class="grid gap-2">
+                    <!-- [MONTHLY] Pricing dropdown -->
+                    <div class="grid gap-2" v-if="billForm.booking_type === 'monthly'">
                         <Label for="pricing_id">Durasi / Paket</Label>
                         <select
                             id="pricing_id"
@@ -609,13 +713,34 @@ const allBills = computed(() => props.bills);
                         </select>
                     </div>
 
+                    <!-- [DAILY] End Date picker -->
+                    <div class="grid gap-2" v-if="billForm.booking_type === 'daily'">
+                        <Label for="daily_due_date">Tanggal Selesai</Label>
+                        <Input
+                            id="daily_due_date"
+                            v-model="billForm.due_date"
+                            type="date"
+                            :min="billForm.start_date"
+                            :disabled="!billForm.start_date"
+                        />
+                        <!-- Daily summary -->
+                        <div
+                            v-if="dailyDays > 0"
+                            class="rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-3 py-2 text-xs text-blue-700 dark:text-blue-300"
+                        >
+                            <span class="font-medium">{{ dailyDays }} hari</span>
+                            × {{ formatCurrency(selectedCategoryDailyPrice) }} =
+                            <span class="font-semibold">{{ formatCurrency(billForm.total_price) }}</span>
+                        </div>
+                    </div>
+
                     <!-- Room selection (filtered by category and date) -->
                     <div class="grid gap-2">
                         <Label for="bill_room_id">Room</Label>
                         <select
                             id="bill_room_id"
                             v-model="billForm.room_id"
-                            :disabled="!billForm.category_id || !billForm.pricing_id || !billForm.start_date"
+                            :disabled="!billForm.category_id || !billForm.start_date || (billForm.booking_type === 'monthly' ? !billForm.pricing_id : !billForm.due_date)"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                         >
                             <option value="" disabled>Pilih room...</option>
@@ -625,9 +750,9 @@ const allBills = computed(() => props.bills);
                         </select>
                     </div>
 
-                    <!-- Due Date (auto) -->
-                    <div class="grid gap-2">
-                        <Label for="due_date">Jatuh Tempo</Label>
+                    <!-- [MONTHLY] Due Date (auto-filled) -->
+                    <div class="grid gap-2" v-if="billForm.booking_type === 'monthly'">
+                        <Label for="due_date">Habis Masa</Label>
                         <Input id="due_date" v-model="billForm.due_date" type="date" disabled />
                     </div>
 
@@ -660,12 +785,21 @@ const allBills = computed(() => props.bills);
                         <DialogClose as-child>
                             <Button type="button" variant="secondary">Batal</Button>
                         </DialogClose>
-                        <Button type="submit" :disabled="billForm.processing || !billForm.room_id || !billForm.pricing_id || !billForm.start_date">
+                        <Button
+                            type="submit"
+                            :disabled="billForm.processing
+                                || !billForm.room_id
+                                || !billForm.start_date
+                                || !billForm.due_date
+                                || (billForm.booking_type === 'monthly' && !billForm.pricing_id)
+                                || (billForm.booking_type === 'daily' && dailyDays <= 0)"
+                        >
                             <LoaderCircle v-if="billForm.processing" class="mr-1.5 h-4 w-4 animate-spin" />
                             Buat Bill
                         </Button>
                     </DialogFooter>
                 </form>
+
             </DialogContent>
         </Dialog>
 

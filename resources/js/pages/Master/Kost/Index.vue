@@ -13,11 +13,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
+
+const { success: toastSuccess, error: toastError } = useToast();
 
 interface KostItem {
     id: number;
@@ -59,10 +62,6 @@ const search = ref(props.filters.search ?? '');
 const showDeleteDialog = ref(false);
 const kostToDelete = ref<KostItem | null>(null);
 
-const flash = computed(() => {
-    const page = router.page as any;
-    return page?.props?.flash as { success?: string; error?: string } | undefined;
-});
 
 const applyFilter = useDebounceFn(() => {
     router.get(
@@ -82,6 +81,12 @@ const confirmDelete = (kost: KostItem) => {
 const deleteKost = () => {
     if (!kostToDelete.value) return;
     router.delete(route('master.kosts.destroy', kostToDelete.value.id), {
+        onSuccess: () => {
+            toastSuccess('Kost berhasil dihapus.');
+        },
+        onError: () => {
+            toastError('Gagal menghapus kost.');
+        },
         onFinish: () => {
             showDeleteDialog.value = false;
             kostToDelete.value = null;
@@ -111,14 +116,6 @@ const deleteKost = () => {
                         </Link>
                 </div>
             </div>
-            </div>
-
-            <!-- Flash message -->
-            <div
-                v-if="flash?.success"
-                class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-            >
-                {{ flash.success }}
             </div>
 
             <!-- Search -->

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
+use App\Models\TermsCondition;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class SignatureController extends Controller
         $today = Carbon::today();
 
         $bills = Bill::with(['room.roomCategory.kost', 'tenant'])
-            ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
+            ->whereIn('status', ['paid', 'finished_payment'])
             ->whereNull('signature')
             ->whereDate('start_date', '<=', $today)
             ->latest()
@@ -36,7 +37,7 @@ class SignatureController extends Controller
 
         // Bills that have been signed
         $signedBills = Bill::with(['room.roomCategory.kost', 'tenant'])
-            ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
+            ->whereIn('status', ['paid', 'finished_payment'])
             ->whereNotNull('signature')
             ->latest()
             ->limit(20)
@@ -50,9 +51,16 @@ class SignatureController extends Controller
                 'signature' => $bill->signature,
             ]);
 
+        $terms = TermsCondition::orderBy('order')->get()->map(fn($t) => [
+            'id'      => $t->id,
+            'order'   => $t->order,
+            'content' => $t->content,
+        ]);
+
         return Inertia::render('Transactions/Signature/Index', [
-            'bills' => $bills,
+            'bills'       => $bills,
             'signedBills' => $signedBills,
+            'terms'       => $terms,
         ]);
     }
 
@@ -64,8 +72,8 @@ class SignatureController extends Controller
         ]);
 
         // only allow signing for paid bills without signature and with start_date <= today
-        if (!in_array($bill->status, ['paid', 'down_payment', 'finished_payment'])) {
-            return back()->with('error', 'Bill harus berstatus paid/down_payment untuk tanda tangan.');
+        if (!in_array($bill->status, ['paid', 'finished_payment'])) {
+            return back()->with('error', 'Bill harus berstatus paid/finished_payment untuk tanda tangan.');
         }
 
         if ($bill->signature !== null) {

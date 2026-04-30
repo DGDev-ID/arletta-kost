@@ -10,6 +10,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\Transaction\RefundRequestController;
 use App\Http\Controllers\Transaction\BillApprovalController;
 use App\Http\Controllers\Transaction\SignatureController;
+use App\Http\Controllers\Transaction\TermsConditionController;
 use App\Http\Controllers\Management\CheckoutController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
@@ -64,6 +65,11 @@ Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transacti
     // Signature management
     Route::get('signatures', [SignatureController::class, 'index'])->name('signatures.index');
     Route::patch('signatures/{bill}/sign', [SignatureController::class, 'sign'])->name('signatures.sign');
+
+    // Terms & Conditions management
+    Route::post('terms-conditions', [TermsConditionController::class, 'store'])->name('terms-conditions.store');
+    Route::put('terms-conditions/bulk', [TermsConditionController::class, 'bulkUpdate'])->name('terms-conditions.bulk-update');
+    Route::delete('terms-conditions/{term}', [TermsConditionController::class, 'destroy'])->name('terms-conditions.destroy');
 
     Route::get('/', [TransactionController::class, 'index'])->name('index');
     Route::get('/{transaction}', [TransactionController::class, 'show'])->name('show');

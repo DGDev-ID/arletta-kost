@@ -13,6 +13,7 @@ class Bill extends Model
         'tenant_id',
         'total_price',
         'payment_scheme',
+        'booking_type',
         'dp_amount',
         'start_date',
         'due_date',

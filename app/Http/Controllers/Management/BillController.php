@@ -15,11 +15,12 @@ class BillController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'tenant_id' => 'required|exists:tenants,id',
-            'room_id' => 'required|exists:rooms,id',
-            'total_price' => 'required|numeric|min:0',
-            'start_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:start_date',
+            'tenant_id'      => 'required|exists:tenants,id',
+            'room_id'        => 'required|exists:rooms,id',
+            'booking_type'   => 'required|in:monthly,daily',
+            'total_price'    => 'required|numeric|min:0',
+            'start_date'     => 'required|date',
+            'due_date'       => 'required|date|after_or_equal:start_date',
             'payment_scheme' => 'required|in:full_pay,dp',
         ]);
 
@@ -34,11 +35,11 @@ class BillController extends Controller
 
             // Auto-create transaction with manual payment type
             $transaction = $bill->transactions()->create([
-                'order_id' => 'BILL-' . $bill->id . '-' . now()->timestamp,
-                'payment_type' => 'manual',
+                'order_id'         => 'BILL-' . $bill->id . '-' . now()->timestamp,
+                'payment_type'     => 'manual',
                 'transaction_type' => $bill->payment_scheme === 'dp' ? 'down_payment' : 'full_payment',
-                'total_price' => $bill->payment_scheme === 'dp' ? $bill->dp_amount : $bill->total_price,
-                'status' => 'pending',
+                'total_price'      => $bill->payment_scheme === 'dp' ? $bill->dp_amount : $bill->total_price,
+                'status'           => 'pending',
             ]);
 
             // Auto-create transaction detail
