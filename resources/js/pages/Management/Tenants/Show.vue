@@ -82,6 +82,7 @@ interface CategoryItem {
     daily_price: number;
     pricings: PricingItem[];      // pricings non-harian (duration_days != 1)
     all_pricings: PricingItem[];  // semua pricings termasuk harian
+    gender?: string | null;
 }
 
 interface OccupiedPeriod {
@@ -170,6 +171,27 @@ const selectedCategoryDailyPrice = computed(() => {
     const cat = props.categories.find(c => c.id === billForm.category_id);
     return cat?.daily_price ?? 0;
 });
+
+// Categories filtered by tenant gender (if tenant.gender is set)
+const categoriesForTenant = computed(() => {
+    const tGender = props.tenant.gender;
+    if (!tGender) return props.categories;
+    return props.categories.filter((c: any) => {
+        const catGender = c.gender ?? 'mixed';
+        if (!catGender) return true;
+        if (catGender === 'mixed') return true;
+        return String(catGender) === String(tGender);
+    });
+});
+
+// Map gender codes to Indonesian labels for frontend display
+const genderLabel = (g: string | null | undefined): string => {
+    if (!g) return '-';
+    if (g === 'male') return 'Laki-laki';
+    if (g === 'female') return 'Perempuan';
+    if (g === 'mixed') return 'Campur';
+    return String(g);
+};
 
 // Apakah kategori yang dipilih mendukung paket harian
 const hasDailyPricing = computed(() => selectedCategoryDailyPrice.value > 0);
@@ -438,7 +460,7 @@ const allBills = computed(() => props.bills);
                     </div>
                     <div>
                         <p class="text-xs text-muted-foreground">Gender</p>
-                        <p class="text-sm font-medium capitalize">{{ tenant.gender ?? '-' }}</p>
+                        <p class="text-sm font-medium">{{ tenant.gender ? genderLabel(tenant.gender) : '-' }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-muted-foreground">NIK</p>
@@ -647,13 +669,18 @@ const allBills = computed(() => props.bills);
                         <select
                             id="bill_category_id"
                             v-model="billForm.category_id"
+                            :disabled="categoriesForTenant.length === 0"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             <option value="" disabled>Pilih kategori...</option>
-                            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                            <option v-for="cat in categoriesForTenant" :key="cat.id" :value="cat.id">
                                 {{ cat.kost_name }} — {{ cat.name }}
                             </option>
                         </select>
+
+                        <p v-if="categoriesForTenant.length === 0" class="text-sm text-muted-foreground">
+                            Tidak ada kategori ruangan yang tersedia untuk {{ props.tenant.gender ? genderLabel(props.tenant.gender) : 'tenant ini' }}.
+                        </p>
                     </div>
 
                     <!-- Booking Type Toggle -->
