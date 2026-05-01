@@ -21,7 +21,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, CheckCircle, FileText, LoaderCircle, XCircle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
-const { success: toastSuccess, error: toastError } = useToast();
+const { error: toastError } = useToast();
 
 interface RoomInfo {
     id: number;
@@ -275,10 +275,6 @@ const submitBill = () => {
         onSuccess: () => {
             showBillDialog.value = false;
             billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date');
-            toastSuccess('Bill berhasil dibuat.');
-        },
-        onError: () => {
-            toastError('Gagal membuat bill. Periksa kembali form.');
         },
     });
 };
@@ -308,16 +304,6 @@ const proceedAction = () => {
 
     router.patch(route(routeName, confirmDialog.value.transactionId), {}, {
         preserveScroll: true,
-        onSuccess: () => {
-            if (isSuccess) {
-                toastSuccess('Transaksi berhasil disetujui.');
-            } else {
-                toastError('Transaksi ditolak.');
-            }
-        },
-        onError: () => {
-            toastError('Gagal memproses transaksi.');
-        },
         onFinish: () => {
             confirmDialog.value.show = false;
         }
@@ -708,7 +694,7 @@ const allBills = computed(() => props.bills);
                                     : 'bg-background text-foreground hover:bg-muted'"
                                 class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
                             >
-                                📅 Bulanan
+                                Bulanan
                             </button>
                             <button
                                 type="button"
@@ -720,7 +706,7 @@ const allBills = computed(() => props.bills);
                                     : 'bg-background text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed'"
                                 class="flex-1 px-4 py-2 text-sm font-medium transition-colors"
                             >
-                                🗓️ Harian
+                                Harian
                             </button>
                         </div>
                         <p v-if="billForm.booking_type === 'daily' && hasDailyPricing" class="text-xs text-muted-foreground">
