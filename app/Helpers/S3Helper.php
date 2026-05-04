@@ -171,6 +171,45 @@ class S3Helper
             self::bucket() . "/" . $supabasePath;
     }
 
+    /**
+     * Generate a Supabase signed URL for a file (works for private buckets).
+     * Falls back to public URL if Supabase is not configured.
+     *
+     * @param  string  $storagePath  Full path inside the bucket, e.g. "signatures/uuid.png"
+     * @param  int     $expiresIn    Expiry in seconds (default: 1 hour)
+     */
+    public static function getSignedUrl(string $storagePath, int $expiresIn = 3600): string
+    {
+        if (!config('services.supabase.url') || !config('services.supabase.key')) {
+            return Storage::disk('public')->url($storagePath);
+        }
+
+        $response = Http::withHeaders([
+            'apikey'        => self::apiKey(),
+            'Authorization' => 'Bearer ' . self::apiKey(),
+            'Content-Type'  => 'application/json',
+        ])->post(
+            self::baseUrl() . '/object/sign/' . self::bucket() . '/' . ltrim($storagePath, '/'),
+            ['expiresIn' => $expiresIn]
+        );
+
+        if ($response->successful()) {
+            $signedUrl = $response->json('signedURL') ?? $response->json('signedUrl');
+            if ($signedUrl) {
+                // Supabase returns a relative path; prepend the base URL if needed
+                if (str_starts_with($signedUrl, '/')) {
+                    return config('services.supabase.url') . '/storage/v1' . $signedUrl;
+                }
+                return $signedUrl;
+            }
+        }
+
+        // Fallback: return public URL
+        return config('services.supabase.url') .
+            "/storage/v1/object/public/" .
+            self::bucket() . "/" . ltrim($storagePath, '/');
+    }
+
     public static function downloadToTemp(string $source): string
     {
         $tempDir = storage_path('app/temp');

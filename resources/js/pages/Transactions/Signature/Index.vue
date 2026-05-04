@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
     Dialog,
     DialogClose,
@@ -275,11 +275,12 @@ const displayTerms = computed(() => props.terms);
                                     <th class="px-4 py-3 text-left font-medium">Start</th>
                                     <th class="px-4 py-3 text-left font-medium">Due</th>
                                     <th class="px-4 py-3 text-center font-medium">TTD</th>
+                                    <th class="px-4 py-3 text-right font-medium">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-if="signedBills.length === 0">
-                                    <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Belum ada tenant yang menandatangani.</td>
+                                    <td colspan="7" class="px-4 py-8 text-center text-muted-foreground">Belum ada tenant yang menandatangani.</td>
                                 </tr>
                                 <tr v-for="(sb, idx) in signedBills" :key="sb.id" class="border-b last:border-0">
                                     <td class="px-4 py-3 font-medium">{{ idx + 1 }}</td>
@@ -291,6 +292,11 @@ const displayTerms = computed(() => props.terms);
                                         <span class="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                                             Sudah TTD
                                         </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <Button size="sm" variant="outline" as-child>
+                                            <Link :href="route('transactions.signatures.show', sb.id)">Detail</Link>
+                                        </Button>
                                     </td>
                                 </tr>
                             </tbody>

@@ -105,7 +105,7 @@ class TenantController extends Controller
                     $today = now();
 
                     return in_array($bill->status, ['paid', 'down_payment', 'finished_payment'])
-                         && $today->between(Carbon::parse($bill->start_date), Carbon::parse($bill->end_date));
+                         && $today->between(Carbon::parse($bill->start_date), Carbon::parse($bill->due_date));
                 })
                 ->map(fn($bill) => [
                     'id' => $bill->room->id,

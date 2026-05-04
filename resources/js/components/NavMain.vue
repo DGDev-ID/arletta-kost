@@ -8,6 +8,7 @@ interface NavItem {
     title: string;
     href: string;
     icon: Component;
+    exact?: boolean;
 }
 
 defineProps<{
@@ -23,7 +24,7 @@ const page = usePage<SharedData>();
         <SidebarGroupLabel>{{ label ?? 'Platform' }}</SidebarGroupLabel>
         <SidebarMenu>
             <SidebarMenuItem v-for="item in items" :key="item.title">
-                <SidebarMenuButton as-child :is-active="page.url === item.href || page.url.startsWith(item.href + '/') || page.url.startsWith(item.href + '?')">
+                <SidebarMenuButton as-child :is-active="page.url === item.href || (!item.exact && (page.url.startsWith(item.href + '/') || page.url.startsWith(item.href + '?')))">  
                     <Link :href="item.href">
                         <component :is="item.icon" />
                         <span>{{ item.title }}</span>

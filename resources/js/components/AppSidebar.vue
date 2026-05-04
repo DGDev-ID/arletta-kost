@@ -62,6 +62,7 @@ const transactionNavItems: NavItem[] = [
         title: 'History Transactions',
         href: '/transactions',
         icon: Wallet,
+        exact: true,
     },
     {
         title: 'Refund Request',

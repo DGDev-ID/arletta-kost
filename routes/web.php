@@ -64,6 +64,7 @@ Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transacti
 
     // Signature management
     Route::get('signatures', [SignatureController::class, 'index'])->name('signatures.index');
+    Route::get('signatures/{bill}', [SignatureController::class, 'show'])->name('signatures.show');
     Route::patch('signatures/{bill}/sign', [SignatureController::class, 'sign'])->name('signatures.sign');
 
     // Terms & Conditions management
