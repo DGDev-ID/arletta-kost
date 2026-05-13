@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
-import { LoaderCircle, Plus, Trash2, Upload, X } from 'lucide-vue-next';
+import { LoaderCircle, Plus, Star, Trash2, Upload, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { formatRupiah } from '@/lib/currency';
 
@@ -23,6 +23,7 @@ interface ImageItem {
     id: number;
     img_url: string;
     full_url: string;
+    is_cover?: boolean;
 }
 
 interface DetailItem {
@@ -82,6 +83,26 @@ const existingImages = ref<ImageItem[]>(props.category?.images?.map(i => ({ ...i
 const newImages = ref<File[]>([]);
 const newImagePreviews = ref<string[]>([]);
 const removedImageIds = ref<number[]>([]);
+
+// Cover tracking
+// For existing images: store the id of the chosen cover
+const coverExistingId = ref<number | null>(
+    props.category?.images?.find(i => i.is_cover)?.id ?? props.category?.images?.[0]?.id ?? null
+);
+// For new images: store which new-image index is the cover (-1 = none)
+const coverNewIndex = ref<number>(-1);
+
+// When user picks an existing image as cover, clear new-image cover
+function setCoverExisting(id: number) {
+    coverExistingId.value = id;
+    coverNewIndex.value = -1;
+}
+
+// When user picks a new image as cover, clear existing cover
+function setCoverNew(idx: number) {
+    coverNewIndex.value = idx;
+    coverExistingId.value = null;
+}
 const processing = ref(false);
 const errors = ref<Record<string, string>>({});
 
@@ -175,6 +196,13 @@ const submit = () => {
     newImages.value.forEach((file) => {
         formData.append('images[]', file);
     });
+
+    // Cover: existing image id OR new image index
+    if (coverExistingId.value !== null) {
+        formData.append('cover_image_id', String(coverExistingId.value));
+    } else if (coverNewIndex.value >= 0) {
+        formData.append('cover_image_index', String(coverNewIndex.value));
+    }
 
     // Removed images (edit mode)
     removedImageIds.value.forEach((id) => {
@@ -287,7 +315,24 @@ const submit = () => {
                         <!-- Existing images -->
                         <div v-if="existingImages.length > 0" class="flex flex-wrap gap-3">
                             <div v-for="img in existingImages" :key="img.id" class="relative group">
-                                <img :src="img.full_url" alt="Category image" class="h-24 w-24 rounded-lg object-cover border" />
+                                <img :src="img.full_url" alt="Category image" class="h-24 w-24 rounded-lg object-cover border" :class="coverExistingId === img.id ? 'ring-2 ring-yellow-400' : ''" />
+                                <!-- Cover badge -->
+                                <span
+                                    v-if="coverExistingId === img.id"
+                                    class="absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                                >
+                                    <Star class="h-2.5 w-2.5 fill-white" /> Cover
+                                </span>
+                                <!-- Set as cover button -->
+                                <button
+                                    v-else
+                                    type="button"
+                                    @click="setCoverExisting(img.id)"
+                                    class="absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Star class="h-2.5 w-2.5" /> Cover
+                                </button>
+                                <!-- Remove button -->
                                 <button
                                     type="button"
                                     @click="removeExistingImage(img)"
@@ -301,7 +346,24 @@ const submit = () => {
                         <!-- New image previews -->
                         <div v-if="newImagePreviews.length > 0" class="flex flex-wrap gap-3">
                             <div v-for="(preview, idx) in newImagePreviews" :key="idx" class="relative group">
-                                <img :src="preview" alt="New image preview" class="h-24 w-24 rounded-lg object-cover border border-dashed border-primary" />
+                                <img :src="preview" alt="New image preview" class="h-24 w-24 rounded-lg object-cover border border-dashed border-primary" :class="coverNewIndex === idx ? 'ring-2 ring-yellow-400' : ''" />
+                                <!-- Cover badge -->
+                                <span
+                                    v-if="coverNewIndex === idx"
+                                    class="absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                                >
+                                    <Star class="h-2.5 w-2.5 fill-white" /> Cover
+                                </span>
+                                <!-- Set as cover button -->
+                                <button
+                                    v-else
+                                    type="button"
+                                    @click="setCoverNew(idx)"
+                                    class="absolute bottom-1 left-1 flex items-center gap-0.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Star class="h-2.5 w-2.5" /> Cover
+                                </button>
+                                <!-- Remove button -->
                                 <button
                                     type="button"
                                     @click="removeNewImage(idx)"
@@ -318,6 +380,7 @@ const submit = () => {
                             Upload Images
                             <input type="file" accept="image/*" multiple class="hidden" @change="onImageSelect" />
                         </label>
+                        <p class="text-xs text-muted-foreground">Hover pada gambar dan klik <strong>Cover</strong> untuk menjadikannya gambar utama.</p>
                         <InputError :message="errors['images']" />
                     </div>
 
