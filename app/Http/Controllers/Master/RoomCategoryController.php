@@ -171,6 +171,7 @@ class RoomCategoryController extends Controller
                     'id' => $img->id,
                     'img_url' => $img->img_url,
                     'full_url' => $img->img_url,
+                    'is_cover' => (bool) $img->is_cover,
                 ]),
                 'details' => $roomCategory->details->map(fn($d) => [
                     'id' => $d->id,
@@ -336,6 +337,19 @@ class RoomCategoryController extends Controller
         });
 
         return to_route('master.room-categories.index')->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function setCoverImage(RoomCategory $roomCategory, RoomCategoryImage $image): JsonResponse
+    {
+        if ($image->room_category_id !== $roomCategory->id) {
+            return response()->json(['message' => 'Gambar tidak ditemukan pada kategori ini.'], 404);
+        }
+
+        // Unset all covers for this category, then set the chosen one
+        $roomCategory->images()->update(['is_cover' => false]);
+        $image->update(['is_cover' => true]);
+
+        return response()->json(['message' => 'Cover gambar berhasil diatur.']);
     }
 
     public function destroy(RoomCategory $roomCategory): RedirectResponse|JsonResponse
