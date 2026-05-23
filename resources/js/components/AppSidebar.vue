@@ -41,7 +41,7 @@ const managementNavItems: NavItem[] = [
         icon: Shield,
     },
     {
-        title: 'Tenants',
+        title: 'Penyewa',
         href: '/management/tenants',
         icon: Users,
     },
