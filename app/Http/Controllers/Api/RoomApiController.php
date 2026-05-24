@@ -128,6 +128,7 @@ class RoomApiController extends ApiBaseController
             'images' => $room->roomCategory->images->map(fn ($img) => [
                 'id' => $img->id,
                 'url' => $this->resolveImageUrl($img->img_url),
+                'is_cover' => (bool) $img->is_cover,
             ]),
             'details' => $room->roomCategory->details->map(fn ($d) => [
                 'id' => $d->id,
@@ -159,13 +160,13 @@ class RoomApiController extends ApiBaseController
         $formatted = 'Rp' . number_format((float) $price, 0, ',', '.');
 
         return match (true) {
-            $durationDays <= 1 => $formatted . ' / hari',
-            $durationDays <= 7 => $formatted . ' / minggu',
-            $durationDays <= 31 => $formatted . ' / bulan',
-            $durationDays <= 93 => $formatted . ' / 3 bulan',
+            $durationDays <= 1   => $formatted . ' / hari',
+            $durationDays <= 7   => $formatted . ' / minggu',
+            $durationDays <= 31  => $formatted . ' / 1 bulan',
+            $durationDays <= 93  => $formatted . ' / 3 bulan',
             $durationDays <= 186 => $formatted . ' / 6 bulan',
-            $durationDays <= 366 => $formatted . ' / tahun',
-            default => $formatted . ' / ' . $durationDays . ' hari',
+            $durationDays <= 366 => $formatted . ' / 12 bulan',
+            default              => $formatted . ' / ' . $durationDays . ' hari',
         };
     }
 }

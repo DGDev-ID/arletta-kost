@@ -309,21 +309,15 @@ watch(() => billForm.category_id, () => {
     }
 });
 
-// Minimum selectable start date (today, local timezone)
+// Minimum selectable start date (no restriction - allow past dates)
 const minStartDate = computed(() => {
-    const d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().split('T')[0];
+    // Return a date far in the past so there's no practical limitation
+    return '1900-01-01';
 });
 
 
 const submitBill = () => {
-    // Prevent submitting with start_date in the past
-    if (billForm.start_date && billForm.start_date < minStartDate.value) {
-        toastError('Tanggal mulai tidak boleh sebelum hari ini.');
-        return;
-    }
-
+    // No longer prevent past dates - allow flexibility in billing
     billForm.post(route('management.bills.store'), {
         preserveScroll: true,
         onSuccess: () => {

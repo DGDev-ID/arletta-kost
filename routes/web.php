@@ -39,6 +39,7 @@ Route::middleware(['auth', 'verified'])->prefix('master')->name('master.')->grou
     Route::post('room-categories/{roomCategory}', [RoomCategoryController::class, 'update'])->name('room-categories.update');
     Route::put('room-categories/{roomCategory}', [RoomCategoryController::class, 'update'])->name('room-categories.update-json');
     Route::delete('room-categories/{roomCategory}', [RoomCategoryController::class, 'destroy'])->name('room-categories.destroy');
+    Route::post('room-categories/{roomCategory}/images/{image}/set-cover', [RoomCategoryController::class, 'setCoverImage'])->name('room-categories.images.set-cover');
 
     Route::resource('promos', PromoController::class)->except(['show']);
 });

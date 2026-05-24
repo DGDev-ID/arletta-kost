@@ -10,6 +10,11 @@ class RoomCategoryImage extends Model
     protected $fillable = [
         'room_category_id',
         'img_url',
+        'is_cover',
+    ];
+
+    protected $casts = [
+        'is_cover' => 'boolean',
     ];
 
     public function roomCategory(): BelongsTo

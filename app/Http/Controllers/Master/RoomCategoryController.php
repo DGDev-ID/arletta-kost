@@ -86,20 +86,21 @@ class RoomCategoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'kost_id' => 'required|exists:m_kosts,id',
-            'name' => 'required|string|max:255',
-            'gender' => 'nullable|in:male,female,mixed',
-            'description' => 'nullable|string',
-            'images' => 'nullable|array',
-            'images.*' => 'image|max:20480',
-            'details' => 'nullable|array',
-            'details.*.detail' => 'required|string|max:255',
-            'details.*.icon' => 'nullable|string|max:100',
-            'pricings' => 'nullable|array',
-            'pricings.*.duration_days' => 'required_with:pricings|integer|min:1',
-            'pricings.*.price' => 'required_with:pricings|numeric|min:0',
-            'pricings.*.promos' => 'nullable|array',
-            'pricings.*.promos.*.type' => 'required_with:pricings.*.promos|string|max:100',
+            'kost_id'                    => 'required|exists:m_kosts,id',
+            'name'                       => 'required|string|max:255',
+            'gender'                     => 'nullable|in:male,female,mixed',
+            'description'                => 'nullable|string',
+            'images'                     => 'nullable|array',
+            'images.*'                   => 'image|max:20480',
+            'cover_image_index'          => 'nullable|integer|min:0',
+            'details'                    => 'nullable|array',
+            'details.*.detail'           => 'required|string|max:255',
+            'details.*.icon'             => 'nullable|string|max:100',
+            'pricings'                   => 'nullable|array',
+            'pricings.*.duration_days'   => 'required_with:pricings|integer|min:1',
+            'pricings.*.price'           => 'required_with:pricings|numeric|min:0',
+            'pricings.*.promos'          => 'nullable|array',
+            'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|string|max:100',
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -113,12 +114,16 @@ class RoomCategoryController extends Controller
             // Handle images with S3Helper
             if ($request->hasFile('images')) {
                 if ($request->hasFile('images')) {
-                    foreach ($request->file('images') as $image) {
+                    $coverIndex = isset($validated['cover_image_index']) ? (int) $validated['cover_image_index'] : 0;
+                    foreach ($request->file('images') as $i => $image) {
                         $tempFileName = S3Helper::storeFileTemp($image);
                         S3Helper::storeFileToS3('room_categories', $tempFileName);
                         $imgUrl = S3Helper::getUrlFileS3('room_categories', $tempFileName);
                         S3Helper::removeFileTemp($tempFileName);
-                        $category->images()->create(['img_url' => $imgUrl]);
+                        $category->images()->create([
+                            'img_url'  => $imgUrl,
+                            'is_cover' => $i === $coverIndex,
+                        ]);
                     }
                 }
             }
@@ -171,6 +176,7 @@ class RoomCategoryController extends Controller
                     'id' => $img->id,
                     'img_url' => $img->img_url,
                     'full_url' => $img->img_url,
+                    'is_cover' => (bool) $img->is_cover,
                 ]),
                 'details' => $roomCategory->details->map(fn($d) => [
                     'id' => $d->id,
@@ -219,33 +225,35 @@ class RoomCategoryController extends Controller
         }
 
         $validated = $request->validate([
-            'kost_id' => 'required|exists:m_kosts,id',
-            'name' => 'required|string|max:255',
-            'gender' => 'nullable|in:male,female,mixed',
-            'description' => 'nullable|string',
-            'images' => 'nullable|array',
-            'images.*' => 'image|max:20480',
-            'removed_images' => 'nullable|array',
-            'removed_images.*' => 'integer|exists:room_category_images,id',
-            'details' => 'nullable|array',
-            'details.*.id' => 'nullable|integer',
-            'details.*.detail' => 'required|string|max:255',
-            'details.*.icon' => 'nullable|string|max:100',
-            'pricings' => 'nullable|array',
-            'pricings.*.id' => 'nullable|integer',
-            'pricings.*.duration_days' => 'required_with:pricings|integer|min:1',
-            'pricings.*.price' => 'required_with:pricings|numeric|min:0',
-            'pricings.*.promos' => 'nullable|array',
-            'pricings.*.promos.*.id' => 'nullable|integer',
-            'pricings.*.promos.*.type' => 'required_with:pricings.*.promos|string|max:100',
+            'kost_id'                    => 'required|exists:m_kosts,id',
+            'name'                       => 'required|string|max:255',
+            'gender'                     => 'nullable|in:male,female,mixed',
+            'description'                => 'nullable|string',
+            'images'                     => 'nullable|array',
+            'images.*'                   => 'image|max:20480',
+            'cover_image_id'             => 'nullable|integer|exists:room_category_images,id',
+            'cover_image_index'          => 'nullable|integer|min:0',
+            'removed_images'             => 'nullable|array',
+            'removed_images.*'           => 'integer|exists:room_category_images,id',
+            'details'                    => 'nullable|array',
+            'details.*.id'               => 'nullable|integer',
+            'details.*.detail'           => 'required|string|max:255',
+            'details.*.icon'             => 'nullable|string|max:100',
+            'pricings'                   => 'nullable|array',
+            'pricings.*.id'              => 'nullable|integer',
+            'pricings.*.duration_days'   => 'required_with:pricings|integer|min:1',
+            'pricings.*.price'           => 'required_with:pricings|numeric|min:0',
+            'pricings.*.promos'          => 'nullable|array',
+            'pricings.*.promos.*.id'     => 'nullable|integer',
+            'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|string|max:100',
         ]);
 
         DB::transaction(function () use ($validated, $request, $roomCategory) {
             $roomCategory->update([
-                'kost_id' => $validated['kost_id'],
-                'name' => $validated['name'],
+                'kost_id'     => $validated['kost_id'],
+                'name'        => $validated['name'],
                 'description' => $validated['description'] ?? null,
-                'gender' => $validated['gender'] ?? null,
+                'gender'      => $validated['gender'] ?? null,
             ]);
 
             // Remove deleted images
@@ -259,13 +267,35 @@ class RoomCategoryController extends Controller
             }
 
             // Add new images with S3Helper
+            // Handle cover for existing image
+            if (! empty($validated['cover_image_id'])) {
+                $roomCategory->images()->update(['is_cover' => false]);
+                $roomCategory->images()->where('id', $validated['cover_image_id'])->update(['is_cover' => true]);
+            }
+
+            // Add new images — if cover_image_index is set, mark that new image as cover
             if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
+                // If a cover_image_id was set it means an existing image is cover, so new images are not cover.
+                // If no cover_image_id but cover_image_index is set, the new image at that index is cover.
+                $noExistingCover = empty($validated['cover_image_id']);
+                $coverNewIndex   = $noExistingCover && isset($validated['cover_image_index'])
+                    ? (int) $validated['cover_image_index']
+                    : -1;
+
+                // If we're setting a new image as cover, clear existing covers first
+                if ($coverNewIndex >= 0) {
+                    $roomCategory->images()->update(['is_cover' => false]);
+                }
+
+                foreach ($request->file('images') as $i => $image) {
                     $tempFileName = S3Helper::storeFileTemp($image);
                     S3Helper::storeFileToS3('room_categories', $tempFileName);
                     $imgUrl = S3Helper::getUrlFileS3('room_categories', $tempFileName);
                     S3Helper::removeFileTemp($tempFileName);
-                    $roomCategory->images()->create(['img_url' => $imgUrl]);
+                    $roomCategory->images()->create([
+                        'img_url'  => $imgUrl,
+                        'is_cover' => $i === $coverNewIndex,
+                    ]);
                 }
             }
 
@@ -336,6 +366,19 @@ class RoomCategoryController extends Controller
         });
 
         return to_route('master.room-categories.index')->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function setCoverImage(RoomCategory $roomCategory, RoomCategoryImage $image): JsonResponse
+    {
+        if ($image->room_category_id !== $roomCategory->id) {
+            return response()->json(['message' => 'Gambar tidak ditemukan pada kategori ini.'], 404);
+        }
+
+        // Unset all covers for this category, then set the chosen one
+        $roomCategory->images()->update(['is_cover' => false]);
+        $image->update(['is_cover' => true]);
+
+        return response()->json(['message' => 'Cover gambar berhasil diatur.']);
     }
 
     public function destroy(RoomCategory $roomCategory): RedirectResponse|JsonResponse
