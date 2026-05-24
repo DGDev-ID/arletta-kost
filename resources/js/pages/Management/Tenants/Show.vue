@@ -132,6 +132,7 @@ const billForm = useForm({
     payment_scheme: 'full_pay' as 'full_pay' | 'dp',
     start_date: '',
     due_date: '',
+    promo_code: '',
 });
 
 const dpAmount = computed(() => {
@@ -139,6 +140,59 @@ const dpAmount = computed(() => {
         return billForm.total_price * 0.5;
     }
     return null;
+});
+
+// --- Promo ---
+interface PromoResult {
+    promo_id: number;
+    name: string;
+    code: string;
+    type: string;
+    value: number;
+    discount_amount: number;
+    bonus_days: number;
+    final_price: number;
+}
+const promoCodeInput  = ref('');
+const promoResult     = ref<PromoResult | null>(null);
+const promoError      = ref('');
+const promoLoading    = ref(false);
+
+const validatePromo = async () => {
+    if (!promoCodeInput.value.trim() || billForm.total_price <= 0) return;
+    promoLoading.value = true;
+    promoError.value   = '';
+    promoResult.value  = null;
+    try {
+        const res = await fetch('/api/promos/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ code: promoCodeInput.value.trim(), total_price: billForm.total_price }),
+        });
+        const json = await res.json();
+        if (json.success) {
+            promoResult.value     = json.data;
+            billForm.promo_code   = promoCodeInput.value.trim().toUpperCase();
+        } else {
+            promoError.value = json.message ?? 'Kode promo tidak valid.';
+        }
+    } catch {
+        promoError.value = 'Gagal memvalidasi promo.';
+    } finally {
+        promoLoading.value = false;
+    }
+};
+
+const clearPromo = () => {
+    promoCodeInput.value  = '';
+    promoResult.value     = null;
+    promoError.value      = '';
+    billForm.promo_code   = '';
+};
+
+// Reset promo when total_price changes
+watch(() => billForm.total_price, () => {
+    if (promoResult.value) clearPromo();
 });
 
 // Rooms filtered by selected category and date overlap
@@ -274,7 +328,8 @@ const submitBill = () => {
         preserveScroll: true,
         onSuccess: () => {
             showBillDialog.value = false;
-            billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date');
+            clearPromo();
+            billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date', 'promo_code');
         },
     });
 };
@@ -786,6 +841,59 @@ const allBills = computed(() => props.bills);
                     <div class="grid gap-2">
                         <Label for="total_price">Total Harga</Label>
                         <Input id="total_price" :model-value="formatCurrency(billForm.total_price)" disabled />
+                    </div>
+
+                    <!-- Promo Code -->
+                    <div class="grid gap-2">
+                        <Label>Kode Promo (Opsional)</Label>
+                        <div class="flex gap-2">
+                            <Input
+                                v-model="promoCodeInput"
+                                placeholder="Masukkan kode promo..."
+                                class="font-mono uppercase tracking-widest"
+                                :disabled="!!promoResult || billForm.total_price <= 0"
+                                @input="promoCodeInput = (promoCodeInput as string).toUpperCase()"
+                            />
+                            <Button
+                                v-if="!promoResult"
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                class="shrink-0"
+                                :disabled="!promoCodeInput.trim() || billForm.total_price <= 0 || promoLoading"
+                                @click="validatePromo"
+                            >
+                                <LoaderCircle v-if="promoLoading" class="h-4 w-4 animate-spin" />
+                                <span v-else>Pakai</span>
+                            </Button>
+                            <Button
+                                v-else
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                class="shrink-0 text-destructive"
+                                @click="clearPromo"
+                            >
+                                Hapus
+                            </Button>
+                        </div>
+                        <p v-if="promoError" class="text-xs text-destructive">{{ promoError }}</p>
+                        <div
+                            v-if="promoResult"
+                            class="rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-2 text-xs text-green-700 dark:text-green-300 space-y-0.5"
+                        >
+                            <p class="font-semibold">{{ promoResult.name }}</p>
+                            <p v-if="promoResult.discount_amount > 0">
+                                Diskon: <strong>{{ formatCurrency(promoResult.discount_amount) }}</strong>
+                                → Harga akhir: <strong>{{ formatCurrency(promoResult.final_price) }}</strong>
+                            </p>
+                            <p v-if="promoResult.bonus_days > 0">
+                                Bonus <strong>{{ promoResult.bonus_days }} hari</strong> menginap tambahan
+                            </p>
+                        </div>
+                        <p v-if="billForm.total_price <= 0 && !promoResult" class="text-xs text-muted-foreground">
+                            Pilih paket terlebih dahulu sebelum menggunakan promo.
+                        </p>
                     </div>
 
                     <!-- Payment Scheme -->

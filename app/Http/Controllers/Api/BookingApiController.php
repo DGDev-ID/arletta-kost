@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
+use App\Models\Promo;
 use App\Models\Room;
 use App\Models\RoomPricing;
 use App\Models\Tenant;
@@ -23,12 +24,13 @@ class BookingApiController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'room_id' => 'required|exists:rooms,id',
-            'pricing_id' => 'required|exists:room_pricings,id',
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
-            'payment_method' => 'required|string'
+            'room_id'        => 'required|exists:rooms,id',
+            'pricing_id'     => 'required|exists:room_pricings,id',
+            'name'           => 'required|string|max:255',
+            'email'          => 'required|email|max:255',
+            'phone'          => 'required|string|max:20',
+            'payment_method' => 'required|string',
+            'promo_code'     => 'nullable|string|max:50',
         ]);
 
         try {
@@ -55,8 +57,25 @@ class BookingApiController extends Controller
             
             $totalPrice = $pricing->price + $deposit + $adminFee;
 
+            // Apply promo code if provided
+            $promo = null;
+            if (! empty($request->promo_code)) {
+                $promo = Promo::where('code', strtoupper($request->promo_code))->first();
+                if ($promo && $promo->isValid($totalPrice)) {
+                    $discount = $promo->discountAmount($totalPrice);
+                    $totalPrice = max(0, $totalPrice - $discount);
+                } else {
+                    $promo = null; // ignore invalid promo silently
+                }
+            }
+
             $startDate = Carbon::today();
             $dueDate = Carbon::today()->addDays($pricing->duration_days);
+
+            // Extend due_date for bonus_days promo
+            if ($promo && $promo->type === 'bonus_days' && $promo->bonusDays() > 0) {
+                $dueDate->addDays($promo->bonusDays());
+            }
 
             // Create Bill
             $bill = Bill::create([
@@ -86,6 +105,11 @@ class BookingApiController extends Controller
             ]);
 
             DB::commit();
+
+            // Increment promo usage after successful commit
+            if ($promo) {
+                $promo->increment('usage_count');
+            }
 
             return response()->json([
                 'success' => true,

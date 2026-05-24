@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BookingApiController;
 use App\Http\Controllers\Api\InquiryApiController;
 use App\Http\Controllers\Api\KostApiController;
+use App\Http\Controllers\Api\PromoApiController;
 use App\Http\Controllers\Api\RefundApiController;
 use App\Http\Controllers\Api\RoomApiController;
 use App\Http\Controllers\Api\RoomCategoryApiController;
@@ -55,3 +56,6 @@ Route::post('bookings', [BookingApiController::class, 'store']);
 // ─── Refund Request ─────────────────────────────────────────────────
 Route::post('refund-request/check-transaction', [RefundApiController::class, 'checkTransaction']);
 Route::post('refund-request', [RefundApiController::class, 'submitRefund']);
+
+// ─── Promo / Voucher ────────────────────────────────────────────────
+Route::post('promos/validate', [PromoApiController::class, 'validate']);

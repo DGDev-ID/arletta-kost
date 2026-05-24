@@ -4,6 +4,7 @@ use App\Http\Controllers\Management\BillController;
 use App\Http\Controllers\Management\TenantController;
 use App\Http\Controllers\Management\UserController;
 use App\Http\Controllers\Master\KostController;
+use App\Http\Controllers\Master\PromoController;
 use App\Http\Controllers\Master\RoomCategoryController;
 use App\Http\Controllers\Master\RoomController;
 use App\Http\Controllers\TransactionController;
@@ -38,6 +39,8 @@ Route::middleware(['auth', 'verified'])->prefix('master')->name('master.')->grou
     Route::post('room-categories/{roomCategory}', [RoomCategoryController::class, 'update'])->name('room-categories.update');
     Route::put('room-categories/{roomCategory}', [RoomCategoryController::class, 'update'])->name('room-categories.update-json');
     Route::delete('room-categories/{roomCategory}', [RoomCategoryController::class, 'destroy'])->name('room-categories.destroy');
+
+    Route::resource('promos', PromoController::class)->except(['show']);
 });
 
 Route::middleware(['auth', 'verified'])->prefix('management')->name('management.')->group(function () {
