@@ -148,7 +148,7 @@ class TenantController extends Controller
             ]);
 
         // Categories with their pricings (for the Create Bill form)
-        $categoriesQuery = RoomCategory::with(['kost', 'pricings'])
+        $categoriesQuery = RoomCategory::with(['kost', 'pricings.promos'])
             ->whereHas('rooms', fn($q) => $q->where('status', '!=', 'maintenance'));
 
         // If tenant has a specific gender, only include categories that are either null (unisex) or match tenant gender
@@ -169,16 +169,30 @@ class TenantController extends Controller
                 'pricings'    => $cat->pricings
                     ->filter(fn($p) => $p->duration_days !== 1) // sembunyikan pricing harian dari list paket
                     ->values()
-                    ->map(fn($p) => [
+                    ->map(function ($p) {
+                        $fp = $p->getFinalPrice();
+                        return [
+                            'id'            => $p->id,
+                            'duration_days' => $p->duration_days,
+                            'price'         => (float) $p->price,
+                            'final_price'   => (float) $fp['final_price'],
+                            'bonus_days'    => $fp['bonus_days'],
+                            'cashback'      => $fp['cashback'],
+                            'applied_promos'=> $fp['applied_promos'],
+                        ];
+                    })->toArray(),
+                'all_pricings' => $cat->pricings->map(function ($p) {
+                    $fp = $p->getFinalPrice();
+                    return [
                         'id'            => $p->id,
                         'duration_days' => $p->duration_days,
                         'price'         => (float) $p->price,
-                    ])->toArray(),
-                'all_pricings' => $cat->pricings->map(fn($p) => [
-                    'id'            => $p->id,
-                    'duration_days' => $p->duration_days,
-                    'price'         => (float) $p->price,
-                ])->toArray(),
+                        'final_price'   => (float) $fp['final_price'],
+                        'bonus_days'    => $fp['bonus_days'],
+                        'cashback'      => $fp['cashback'],
+                        'applied_promos'=> $fp['applied_promos'],
+                    ];
+                })->toArray(),
             ]);
 
         // All non-maintenance rooms with their occupied periods for date-based filtering

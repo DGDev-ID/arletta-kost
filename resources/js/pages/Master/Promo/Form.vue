@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { ArrowLeft, LoaderCircle, RefreshCw } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface PromoData {
     id: number;
@@ -51,11 +51,11 @@ const valid_until = ref(props.promo?.valid_until ?? '');
 const processing = ref(false);
 const errors     = ref<Record<string, string>>({});
 
-// Auto-uppercase code
-const handleCodeInput = (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    code.value = input.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
-};
+// Auto-uppercase code — watch is more reliable than @input on Shadcn Input
+watch(code, (val) => {
+    const transformed = val.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    if (transformed !== val) code.value = transformed;
+});
 
 // Random code generator
 const generateCode = () => {
@@ -145,8 +145,7 @@ const submit = () => {
                             <div class="flex gap-2">
                                 <Input
                                     id="code"
-                                    :value="code"
-                                    @input="handleCodeInput"
+                                    v-model="code"
                                     placeholder="Contoh: PROMO10"
                                     class="font-mono tracking-widest uppercase"
                                     maxlength="50"

@@ -73,6 +73,10 @@ interface PricingItem {
     id: number;
     duration_days: number;
     price: number;
+    final_price?: number;
+    bonus_days?: number;
+    cashback?: number;
+    applied_promos?: any[];
 }
 
 interface CategoryItem {
@@ -135,12 +139,7 @@ const billForm = useForm({
     promo_code: '',
 });
 
-const dpAmount = computed(() => {
-    if (billForm.payment_scheme === 'dp') {
-        return billForm.total_price * 0.5;
-    }
-    return null;
-});
+// dpAmount and displayTotalPrice are declared below (after promoResult)
 
 // --- Promo ---
 interface PromoResult {
@@ -157,6 +156,21 @@ const promoCodeInput  = ref('');
 const promoResult     = ref<PromoResult | null>(null);
 const promoError      = ref('');
 const promoLoading    = ref(false);
+const dpAmount = computed(() => {
+    const basePrice = promoResult.value?.final_price ?? billForm.total_price;
+    if (billForm.payment_scheme === 'dp') {
+        return basePrice * 0.5;
+    }
+    return null;
+});
+
+const displayTotalPrice = computed(() => promoResult.value?.final_price ?? billForm.total_price);
+
+// Auto-uppercase promo code input
+watch(promoCodeInput, (val) => {
+    const upper = val.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    if (upper !== val) promoCodeInput.value = upper;
+});
 
 const validatePromo = async () => {
     if (!promoCodeInput.value.trim() || billForm.total_price <= 0) return;
@@ -269,9 +283,14 @@ watch(
     () => [billForm.pricing_id, billForm.start_date],
     () => {
         if (billForm.booking_type === 'monthly' && selectedPricing.value && billForm.start_date) {
-            billForm.total_price = selectedPricing.value.price;
+            // Use pricing-level final_price if available (after promos)
+            const finalPrice = selectedPricing.value.final_price ?? selectedPricing.value.price;
+            billForm.total_price = finalPrice;
+
             const start = new Date(billForm.start_date);
-            start.setDate(start.getDate() + selectedPricing.value.duration_days);
+            const baseDays = Number(selectedPricing.value.duration_days ?? 0);
+            const bonus = Number(selectedPricing.value.bonus_days ?? 0);
+            start.setDate(start.getDate() + baseDays + bonus);
             billForm.due_date = start.toISOString().split('T')[0];
         }
     },
@@ -628,7 +647,7 @@ const allBills = computed(() => props.bills);
                                     <td class="px-4 py-3">{{ formatCurrency(bill.total_price) }}</td>
                                     <td class="px-4 py-3">{{ formatCurrency(bill.dp_amount || 0) }}</td>
                                     <td class="px-4 py-3 font-semibold text-orange-600 dark:text-orange-400">{{ formatCurrency(bill.total_price - (bill.dp_amount || 0)) }}</td>
-                                    <td class="px-4 py-3">{{ bill.due_date }}</td>
+                                    <td class="px-4 py-3">{{ formatDate(bill.due_date) }}</td>
                                     <td class="px-4 py-3">
                                         <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
                                             {{ bill.status }}
@@ -834,7 +853,10 @@ const allBills = computed(() => props.bills);
                     <!-- Total Price (auto) -->
                     <div class="grid gap-2">
                         <Label for="total_price">Total Harga</Label>
-                        <Input id="total_price" :model-value="formatCurrency(billForm.total_price)" disabled />
+                        <Input id="total_price" :model-value="formatCurrency(displayTotalPrice)" disabled />
+                        <p class="text-xs text-muted-foreground mt-1">
+                            Catatan: Harga di atas sudah memperhitungkan promo yang berlaku pada kategori kamar (paket bulanan atau harga harian). Untuk promo tambahan, masukkan kode promo di bawah untuk potongan lebih lanjut.
+                        </p>
                     </div>
 
                     <!-- Promo Code -->
@@ -846,7 +868,6 @@ const allBills = computed(() => props.bills);
                                 placeholder="Masukkan kode promo..."
                                 class="font-mono uppercase tracking-widest"
                                 :disabled="!!promoResult || billForm.total_price <= 0"
-                                @input="promoCodeInput = (promoCodeInput as string).toUpperCase()"
                             />
                             <Button
                                 v-if="!promoResult"

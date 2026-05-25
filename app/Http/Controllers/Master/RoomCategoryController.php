@@ -100,7 +100,8 @@ class RoomCategoryController extends Controller
             'pricings.*.duration_days'   => 'required_with:pricings|integer|min:1',
             'pricings.*.price'           => 'required_with:pricings|numeric|min:0',
             'pricings.*.promos'          => 'nullable|array',
-            'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|string|max:100',
+            'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|in:discount_percent,discount_amount,bonus_days,cashback',
+            'pricings.*.promos.*.value'  => 'required_with:pricings.*.promos|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -149,7 +150,8 @@ class RoomCategoryController extends Controller
                     if (! empty($pricing['promos'])) {
                         foreach ($pricing['promos'] as $promo) {
                             $p->promos()->create([
-                                'type' => $promo['type'],
+                                'type'  => $promo['type'],
+                                'value' => $promo['value'] ?? 0,
                             ]);
                         }
                     }
@@ -188,8 +190,9 @@ class RoomCategoryController extends Controller
                     'duration_days' => $p->duration_days,
                     'price' => $p->price,
                     'promos' => $p->promos->map(fn($r) => [
-                        'id' => $r->id,
-                        'type' => $r->type,
+                        'id'    => $r->id,
+                        'type'  => $r->type,
+                        'value' => (float) $r->value,
                     ]),
                 ]),
             ],
@@ -245,7 +248,8 @@ class RoomCategoryController extends Controller
             'pricings.*.price'           => 'required_with:pricings|numeric|min:0',
             'pricings.*.promos'          => 'nullable|array',
             'pricings.*.promos.*.id'     => 'nullable|integer',
-            'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|string|max:100',
+            'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|in:discount_percent,discount_amount,bonus_days,cashback',
+            'pricings.*.promos.*.value'  => 'required_with:pricings.*.promos|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($validated, $request, $roomCategory) {
@@ -346,12 +350,14 @@ class RoomCategoryController extends Controller
                         foreach ($pricing['promos'] as $promo) {
                             if (! empty($promo['id'])) {
                                 $pModel->promos()->where('id', $promo['id'])->update([
-                                    'type' => $promo['type'],
+                                    'type'  => $promo['type'],
+                                    'value' => $promo['value'] ?? 0,
                                 ]);
                                 $existingPromoIds[] = $promo['id'];
                             } else {
                                 $newPromo = $pModel->promos()->create([
-                                    'type' => $promo['type'],
+                                    'type'  => $promo['type'],
+                                    'value' => $promo['value'] ?? 0,
                                 ]);
                                 $existingPromoIds[] = $newPromo->id;
                             }

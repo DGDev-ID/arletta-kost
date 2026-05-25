@@ -35,6 +35,7 @@ interface DetailItem {
 interface PromoItem {
     id?: number;
     type: string;
+    value: number;
 }
 
 interface PricingItem {
@@ -77,7 +78,7 @@ const pricings = ref<PricingItem[]>(props.category?.pricings?.map((p: any) => ({
     id: p.id,
     duration_days: p.duration_days,
     price: p.price,
-    promos: (p.promos ?? []).map((r: any) => ({ id: r.id, type: r.type })),
+    promos: (p.promos ?? []).map((r: any) => ({ id: r.id, type: r.type, value: r.value ?? 0 })),
 })) ?? []);
 const existingImages = ref<ImageItem[]>(props.category?.images?.map(i => ({ ...i })) ?? []);
 const newImages = ref<File[]>([]);
@@ -121,7 +122,7 @@ const removePricing = (index: number) => {
 };
 
 const addPromo = (pricingIndex: number) => {
-    pricings.value[pricingIndex].promos.push({ type: '' });
+    pricings.value[pricingIndex].promos.push({ type: 'discount_percent', value: 0 });
 };
 
 const removePromo = (pricingIndex: number, promoIndex: number) => {
@@ -224,6 +225,7 @@ const submit = () => {
         (p.promos || []).forEach((pr, j) => {
             if (pr.id) formData.append(`pricings[${i}][promos][${j}][id]`, String(pr.id));
             formData.append(`pricings[${i}][promos][${j}][type]`, pr.type || '');
+            formData.append(`pricings[${i}][promos][${j}][value]`, String(pr.value ?? 0));
         });
     });
 
@@ -462,11 +464,26 @@ const submit = () => {
                                     Belum ada promo untuk pricing ini.
                                 </div>
 
-                                <div v-for="(promo, pridx) in pricing.promos" :key="pridx" class="flex items-center gap-3">
-                                    <div class="flex-1">
-                                        <Input v-model="promo.type" placeholder="Type promo, misal: cashback, bonus_days" />
+                                <div v-for="(promo, pridx) in pricing.promos" :key="pridx" class="flex items-center gap-2">
+                                    <select
+                                        v-model="promo.type"
+                                        class="flex h-10 w-44 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                        <option value="discount_percent">Diskon (%)</option>
+                                        <option value="discount_amount">Diskon (Rp)</option>
+                                        <option value="bonus_days">Bonus Hari</option>
+                                        <option value="cashback">Cashback (Rp)</option>
+                                    </select>
+                                    <div class="relative flex-1">
+                                        <Input
+                                            type="number"
+                                            v-model.number="promo.value"
+                                            min="0"
+                                            :max="promo.type === 'discount_percent' ? 100 : undefined"
+                                            :placeholder="promo.type === 'discount_percent' ? '0–100' : promo.type === 'bonus_days' ? 'Jumlah hari' : 'Nominal Rp'"
+                                        />
                                     </div>
-                                    <Button type="button" variant="ghost" size="icon" class="h-9 w-9 text-destructive" @click="removePromo(pidx, pridx)">
+                                    <Button type="button" variant="ghost" size="icon" class="h-9 w-9 text-destructive shrink-0" @click="removePromo(pidx, pridx)">
                                         <Trash2 class="h-4 w-4" />
                                     </Button>
                                 </div>

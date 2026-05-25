@@ -17,7 +17,7 @@ class RoomApiController extends ApiBaseController
     public function list(Request $request): JsonResponse
     {
         try {
-            $query = Room::with(['roomCategory.kost', 'roomCategory.pricings', 'roomCategory.images', 'roomCategory.details']);
+            $query = Room::with(['roomCategory.kost', 'roomCategory.pricings.promos', 'roomCategory.images', 'roomCategory.details']);
 
             if ($request->filled('status')) {
                 $query->where('status', $request->input('status'));
@@ -59,7 +59,7 @@ class RoomApiController extends ApiBaseController
     public function index(Request $request, Kost $kost): JsonResponse
     {
         try {
-            $query = Room::with(['roomCategory.kost', 'roomCategory.pricings', 'roomCategory.images', 'roomCategory.details'])
+            $query = Room::with(['roomCategory.kost', 'roomCategory.pricings.promos', 'roomCategory.images', 'roomCategory.details'])
                 ->whereHas('roomCategory', fn ($q) => $q->where('kost_id', $kost->id));
 
             if ($request->filled('category_id')) {
@@ -95,7 +95,7 @@ class RoomApiController extends ApiBaseController
     public function show(Room $room): JsonResponse
     {
         try {
-            $room->load(['roomCategory.kost', 'roomCategory.pricings', 'roomCategory.images', 'roomCategory.details']);
+            $room->load(['roomCategory.kost', 'roomCategory.pricings.promos', 'roomCategory.images', 'roomCategory.details']);
 
             return $this->success($this->formatRoom($room));
         } catch (\Throwable $e) {
@@ -136,13 +136,29 @@ class RoomApiController extends ApiBaseController
                 'icon' => $d->icon,
             ]),
             'pricings' => $pricings->map(fn ($p) => [
-                'id' => $p->id,
-                'duration_days' => $p->duration_days,
-                'price' => (float) $p->price,
-                'price_display' => $this->formatPriceDisplay($p->price, $p->duration_days),
+                'id'             => $p->id,
+                'duration_days'  => $p->duration_days,
+                'price'          => (float) $p->price,
+                'price_display'  => $this->formatPriceDisplay($p->price, $p->duration_days),
+                ...($p->promos->isNotEmpty() ? (function () use ($p) {
+                    $fp = $p->getFinalPrice();
+                    return [
+                        'final_price'      => $fp['final_price'],
+                        'final_price_display' => $this->formatPriceDisplay($fp['final_price'], $p->duration_days),
+                        'bonus_days'       => $fp['bonus_days'],
+                        'cashback'         => $fp['cashback'],
+                        'applied_promos'   => $fp['applied_promos'],
+                    ];
+                })() : [
+                    'final_price'         => (float) $p->price,
+                    'final_price_display' => $this->formatPriceDisplay($p->price, $p->duration_days),
+                    'bonus_days'          => 0,
+                    'cashback'            => 0.0,
+                    'applied_promos'      => [],
+                ]),
             ]),
-            'minimum_price' => $pricings->min('price') ? (float) $pricings->min('price') : 0,
-            'maximum_price' => $pricings->max('price') ? (float) $pricings->max('price') : 0,
+            'minimum_price' => $pricings->min(fn ($p) => $p->getFinalPrice()['final_price']) ?? 0.0,
+            'maximum_price' => $pricings->max(fn ($p) => $p->getFinalPrice()['final_price']) ?? 0.0,
         ];
     }
 
