@@ -159,6 +159,17 @@ class RoomApiController extends ApiBaseController
             ]),
             'minimum_price' => $pricings->min(fn ($p) => $p->getFinalPrice()['final_price']) ?? 0.0,
             'maximum_price' => $pricings->max(fn ($p) => $p->getFinalPrice()['final_price']) ?? 0.0,
+            'minimum_pricing' => $pricings->sortBy(fn ($p) => $p->getFinalPrice()['final_price'])->first()
+                ? (function () use ($pricings) {
+                    $p = $pricings->sortBy(fn ($p) => $p->getFinalPrice()['final_price'])->first();
+                    return [
+                        'id'            => $p->id,
+                        'duration_days' => $p->duration_days,
+                        'price'         => (float) $p->price,
+                        'price_display' => $this->formatPriceDisplay($p->price, $p->duration_days),
+                    ];
+                })()
+                : null,
         ];
     }
 
