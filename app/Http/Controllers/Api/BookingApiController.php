@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\ApiBaseController;
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\Promo;
@@ -10,12 +11,13 @@ use App\Models\RoomPricing;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
+use App\Services\TransactionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class BookingApiController extends Controller
+class BookingApiController extends ApiBaseController
 {
     /**
      * Handle room booking from the landing page.
@@ -24,11 +26,17 @@ class BookingApiController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'cust_name'      => 'required|string|max:255',
+            'cust_email'     => 'required|email|max:255',
+            'cust_phone'     => 'required|string|max:20',
+
             'room_id'        => 'required|exists:rooms,id',
-            'pricing_id'     => 'required|exists:room_pricings,id',
+            'room_pricing_id'     => 'required|exists:room_pricings,id',
             'name'           => 'required|string|max:255',
-            'email'          => 'required|email|max:255',
-            'phone'          => 'required|string|max:20',
+
+            'start_date'     => 'required|date',
+            'payment_scheme' => 'required|in:full_pay,dp',
+
             'payment_method' => 'required|string',
             'promo_code'     => 'nullable|string|max:50',
         ]);
@@ -37,95 +45,65 @@ class BookingApiController extends Controller
             DB::beginTransaction();
 
             $room = Room::findOrFail($request->room_id);
-            $pricing = RoomPricing::findOrFail($request->pricing_id);
+            $pricing = RoomPricing::findOrFail($request->room_pricing_id);
 
-            // Create Tenant
             $tenant = Tenant::create([
-                'room_id' => $room->id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone_number' => $request->phone,
+                'name' => $request->cust_name,
+                'email' => $request->cust_email,
+                'phone_number' => $request->cust_phone,
             ]);
 
-            // Deposit and Admin Fee logic from frontend
-            // Deposit = cheapest pricing (approximate, we could calculate correctly but let's just use minimum price or just use the pricing price + 25000)
-            // The frontend sends everything, so maybe we should trust the frontend's total or calculate it here.
-            // Let's get the minimum price for deposit
-            $minPricing = RoomPricing::where('room_category_id', $room->room_category_id)->orderBy('duration_days', 'asc')->first();
-            $deposit = $minPricing ? $minPricing->price : 0;
-            $adminFee = 25000;
-            
-            $totalPrice = $pricing->price + $deposit + $adminFee;
+            $totalPrice = $request->payment_scheme === 'dp' ? $pricing->price * 0.5 : $pricing->price;
+            $startDate = Carbon::parse($request->start_date);
+            $dueDate = (clone $startDate)->addDays($pricing->duration_days);
 
-            // Apply promo code if provided
             $promo = null;
-            if (! empty($request->promo_code)) {
-                $promo = Promo::where('code', strtoupper($request->promo_code))->first();
-                if ($promo && $promo->isValid($totalPrice)) {
-                    $discount = $promo->discountAmount($totalPrice);
-                    $totalPrice = max(0, $totalPrice - $discount);
-                } else {
-                    $promo = null; // ignore invalid promo silently
+            if (! empty($validated['promo_code'])) {
+                $promo = Promo::where('code', strtoupper($validated['promo_code']))->first();
+
+                if (! $promo || ! $promo->isValid((float) $validated['total_price'])) {
+                    return $this->clientError('Kode promo tidak valid atau tidak dapat digunakan.');
+                }
+
+                $discount = $promo->discountAmount((float) $totalPrice);
+                $totalPrice = max(0, (float) $totalPrice - $discount);
+
+                if ($promo->type === 'bonus_days' && $promo->bonusDays() > 0) {
+                    $dueDate->addDays($promo->bonusDays());
                 }
             }
 
-            $startDate = Carbon::today();
-            $dueDate = Carbon::today()->addDays($pricing->duration_days);
+            $validated = [
+                'tenant_id'      => $tenant->id,
+                'room_id'        => $room->id,
+                'total_price'    => $request->payment_scheme === 'dp' ? 0 : $totalPrice,
+                'dp_amount'      => $request->payment_scheme === 'dp' ? $totalPrice : 0,
+                'start_date'     => $startDate,
+                'due_date'       => $dueDate,
+                'payment_scheme' => $request->payment_scheme,
+                'status'     => 'unpaid',
+            ];
 
-            // Extend due_date for bonus_days promo
-            if ($promo && $promo->type === 'bonus_days' && $promo->bonusDays() > 0) {
-                $dueDate->addDays($promo->bonusDays());
-            }
+            $transaction = null;
+            DB::transaction(function () use ($validated, $promo, &$transaction) {
+                $bill = Bill::create($validated);
+                $transaction = TransactionService::makeTransaction($bill, 'qris ');
 
-            // Create Bill
-            $bill = Bill::create([
-                'room_id' => $room->id,
-                'tenant_id' => $tenant->id,
-                'total_price' => $totalPrice,
-                'start_date' => $startDate,
-                'due_date' => $dueDate,
-                'status' => 'paid', // Since landing page mocks success
-            ]);
+                $tenant = \App\Models\Tenant::find($validated['tenant_id']);
+                if (! $tenant->rooms()->where('rooms.id', $validated['room_id'])->exists()) {
+                    $tenant->rooms()->attach($validated['room_id']);
+                }
 
-            // Create Transaction
-            $transaction = Transaction::create([
-                'bill_id' => $bill->id,
-                'order_id' => 'MID-' . strtoupper(Str::random(10)),
-                'payment_type' => 'midtrans',
-                'midtrans_method' => str_contains($request->payment_method, 'va') ? 'va' : 'qris',
-                'transaction_fee' => $adminFee,
-                'total_price' => $totalPrice,
-                'status' => 'success', // Simulated success
-            ]);
-
-            // Create Transaction Detail
-            TransactionDetail::create([
-                'transaction_id' => $transaction->id,
-                'status' => 'success',
-            ]);
-
+                if ($promo) {
+                    $promo->increment('usage_count');
+                }
+            });
             DB::commit();
 
-            // Increment promo usage after successful commit
-            if ($promo) {
-                $promo->increment('usage_count');
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Booking and payment successful',
-                'data' => [
-                    'transaction_id' => $transaction->id,
-                    'order_id' => $transaction->order_id
-                ]
-            ], 201);
-
+            return $this->success($transaction, 'Booking successful');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking failed: ' . $e->getMessage()
-            ], 500);
+            return $this->serverError('Booking failed: ' . $e->getMessage());
         }
     }
 }
