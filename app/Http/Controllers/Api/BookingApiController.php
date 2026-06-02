@@ -102,7 +102,7 @@ class BookingApiController extends ApiBaseController
             return $this->success($transaction, 'Booking successful');
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->serverError('Booking failed: ' . $e->getMessage());
+            return $this->serverError($e);
         }
     }
 }
