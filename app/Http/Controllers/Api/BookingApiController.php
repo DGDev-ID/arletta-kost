@@ -32,7 +32,6 @@ class BookingApiController extends ApiBaseController
 
             'room_id'        => 'required|exists:rooms,id',
             'room_pricing_id'     => 'required|exists:room_pricings,id',
-            'name'           => 'required|string|max:255',
 
             'start_date'     => 'required|date',
             'payment_scheme' => 'required|in:full_pay,dp',
