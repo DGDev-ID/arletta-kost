@@ -39,12 +39,12 @@ class Room extends Model
 
     /**
      * Check if room is available for the given date range.
-     * A room is unavailable if there's a paid/unpaid bill overlapping with the range.
+     * A room is unavailable if there's an active bill overlapping with the range.
      */
     public function isAvailableForDates(string $startDate, string $endDate): bool
     {
         return ! $this->bills()
-            ->whereIn('status', ['paid', 'unpaid'])
+            ->whereIn('status', ['unpaid', 'paid', 'down_payment', 'finished_payment'])
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where('start_date', '<', $endDate)
                   ->where('due_date', '>', $startDate);

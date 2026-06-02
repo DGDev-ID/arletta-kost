@@ -46,6 +46,14 @@ class BookingApiController extends ApiBaseController
             $room = Room::findOrFail($request->room_id);
             $pricing = RoomPricing::findOrFail($request->room_pricing_id);
 
+            $startDate = Carbon::parse($request->start_date);
+            $dueDate = (clone $startDate)->addDays($pricing->duration_days);
+
+            if (! $room->isAvailableForDates($startDate->toDateString(), $dueDate->toDateString())) {
+                DB::rollBack();
+                return $this->clientError('Kamar sudah dipesan atau sedang digunakan pada tanggal yang dipilih. Silakan pilih tanggal atau kamar lain.');
+            }
+
             $tenant = Tenant::create([
                 'name' => $request->cust_name,
                 'email' => $request->cust_email,
@@ -53,8 +61,6 @@ class BookingApiController extends ApiBaseController
             ]);
 
             $totalPrice = $request->payment_scheme === 'dp' ? $pricing->price * 0.5 : $pricing->price;
-            $startDate = Carbon::parse($request->start_date);
-            $dueDate = (clone $startDate)->addDays($pricing->duration_days);
 
             $promo = null;
             if (! empty($validated['promo_code'])) {
