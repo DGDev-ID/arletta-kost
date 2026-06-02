@@ -107,4 +107,9 @@ class BookingApiController extends ApiBaseController
             return $this->serverError($e);
         }
     }
+
+    public function checkStatus(Transaction $transaction)
+    {
+        return $this->success($transaction->status, 'Transaction status retrieved successfully');
+    }
 }

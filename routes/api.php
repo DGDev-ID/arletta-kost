@@ -53,6 +53,7 @@ Route::post('inquiries', [InquiryApiController::class, 'store']);
 
 // ─── Bookings / Transactions ─────────────────────────────────────────
 Route::post('bookings', [BookingApiController::class, 'store']);
+Route::get('transactions/{transaction}/status', [BookingApiController::class, 'checkStatus']);
 
 // ─── Refund Request ─────────────────────────────────────────────────
 Route::post('refund-request/check-transaction', [RefundApiController::class, 'checkTransaction']);
