@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\RefundApiController;
 use App\Http\Controllers\Api\RoomApiController;
 use App\Http\Controllers\Api\RoomCategoryApiController;
 use App\Http\Controllers\Api\SearchApiController;
+use App\Http\Controllers\Api\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -59,3 +60,5 @@ Route::post('refund-request', [RefundApiController::class, 'submitRefund']);
 
 // ─── Promo / Voucher ────────────────────────────────────────────────
 Route::post('promos/validate', [PromoApiController::class, 'validate']);
+
+Route::post('payment-webhook', PaymentWebhookController::class);

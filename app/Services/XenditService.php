@@ -98,7 +98,7 @@ class XenditService
             return true;
         }
 
-        $transaction = Transaction::where('unique_code', $referenceId)->first();
+        $transaction = Transaction::where('order_id', $referenceId)->first();
 
         if (!$transaction) {
             Log::warning('Xendit Webhook: Transaction not found', [
@@ -113,10 +113,7 @@ class XenditService
             case 'SUCCEEDED':
             case 'COMPLETED':
             case 'PAID':
-                $transaction->update([
-                    'status' => 'success',
-                    'paid_at' => now(),
-                ]);
+                TransactionService::makeSuccess($transaction);
                 break;
 
             case 'PENDING':
@@ -134,15 +131,10 @@ class XenditService
 
             case 'FAILED':
             case 'CANCELLED':
-                $transaction->update([
-                    'status' => 'failed',
-                ]);
+                TransactionService::makeFailed($transaction);
                 break;
 
             default:
-                $transaction->update([
-                    'status' => 'unknown',
-                ]);
                 break;
         }
 
