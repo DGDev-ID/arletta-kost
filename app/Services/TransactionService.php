@@ -30,7 +30,7 @@ class TransactionService
             'status' => $transaction->status,
         ]);
 
-        if ($transaction->payment_type === 'qris') {
+        if ($transaction->payment_type === 'midtrans') {
             $transaction->update([
                 'midtrans_method' => 'qris',
             ]);

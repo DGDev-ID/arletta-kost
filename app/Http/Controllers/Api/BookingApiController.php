@@ -86,7 +86,9 @@ class BookingApiController extends ApiBaseController
             $transaction = null;
             DB::transaction(function () use ($validated, $promo, &$transaction) {
                 $bill = Bill::create($validated);
-                $transaction = TransactionService::makeTransaction($bill, 'qris ');
+                $transaction = TransactionService::makeTransaction($bill, 'midtrans');
+
+                 $tenant = \App\Models\Tenant::find($validated['tenant_id']);
 
                 $tenant = \App\Models\Tenant::find($validated['tenant_id']);
                 if (! $tenant->rooms()->where('rooms.id', $validated['room_id'])->exists()) {
