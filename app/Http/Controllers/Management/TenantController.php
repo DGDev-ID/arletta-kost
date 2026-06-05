@@ -102,10 +102,10 @@ class TenantController extends Controller
             'address' => $tenant->address,
             'rooms' => $tenant->bills
                 ->filter(function ($bill) {
-                    $today = now();
-
+                    // Show all active bills where due_date hasn't passed yet.
+                    // This includes future bookings (start_date > today) and current occupancies.
                     return in_array($bill->status, ['paid', 'down_payment', 'finished_payment'])
-                         && $today->between(Carbon::parse($bill->start_date), Carbon::parse($bill->due_date));
+                        && Carbon::parse($bill->due_date)->gte(now()->startOfDay());
                 })
                 ->map(fn($bill) => [
                     'id' => $bill->room->id,
