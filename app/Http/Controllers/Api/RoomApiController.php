@@ -187,8 +187,8 @@ class RoomApiController extends ApiBaseController
         $formatted = 'Rp' . number_format((float) $price, 0, ',', '.');
 
         return match (true) {
-            $durationDays <= 1   => $formatted . ' / hari',
-            $durationDays <= 7   => $formatted . ' / minggu',
+            $durationDays <= 1   => $formatted . ' / 1 hari',
+            $durationDays <= 7   => $formatted . ' / 1 minggu',
             $durationDays <= 31  => $formatted . ' / 1 bulan',
             $durationDays <= 93  => $formatted . ' / 3 bulan',
             $durationDays <= 186 => $formatted . ' / 6 bulan',
