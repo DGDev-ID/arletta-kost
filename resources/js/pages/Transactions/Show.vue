@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, LoaderCircle, RotateCcw } from 'lucide-vue-next';
+import { ArrowLeft, Download, LoaderCircle, RotateCcw } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface TransactionData {
@@ -45,6 +45,10 @@ interface BillData {
     status: string;
     payment_scheme: string;
     dp_amount: number | null;
+    room_number: string;
+    category_name: string;
+    kost_name: string;
+    kost_address: string;
 }
 
 interface DetailItem {
@@ -143,10 +147,19 @@ const timelineIcon = (s: string) => {
                                 :description="transaction.created_at" />
                     </div>
 
-                    <div>
+                    <div class="flex items-center gap-2">
+                        <a
+                            :href="route('transactions.invoice', transaction.id)"
+                            target="_blank"
+                            class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                            <Download class="h-4 w-4" />
+                            Download Invoice
+                        </a>
                         <button
                             @click="showRefundDialog = true"
-                            class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                            class="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
                             <RotateCcw class="h-4 w-4" />
                             Request Refund
                         </button>

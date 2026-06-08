@@ -25,7 +25,7 @@ class BookingApiController extends ApiBaseController
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'cust_name'      => 'required|string|max:255',
             'cust_email'     => 'required|email|max:255',
             'cust_phone'     => 'required|string|max:20',
@@ -41,8 +41,6 @@ class BookingApiController extends ApiBaseController
         ]);
 
         try {
-            DB::beginTransaction();
-
             $room = Room::findOrFail($request->room_id);
             $pricing = RoomPricing::findOrFail($request->room_pricing_id);
 
@@ -50,66 +48,60 @@ class BookingApiController extends ApiBaseController
             $dueDate = (clone $startDate)->addDays($pricing->duration_days);
 
             if (! $room->isAvailableForDates($startDate->toDateString(), $dueDate->toDateString())) {
-                DB::rollBack();
                 return $this->clientError('Kamar sudah dipesan atau sedang digunakan pada tanggal yang dipilih. Silakan pilih tanggal atau kamar lain.');
             }
 
-            $tenant = Tenant::create([
-                'name' => $request->cust_name,
-                'email' => $request->cust_email,
-                'phone_number' => $request->cust_phone,
-            ]);
+            $transaction = DB::transaction(function () use ($request, $room, $pricing, $startDate, $dueDate) {
+                $tenant = Tenant::create([
+                    'name' => $request->cust_name,
+                    'email' => $request->cust_email,
+                    'phone_number' => $request->cust_phone,
+                ]);
 
-            $totalPrice = $request->payment_scheme === 'dp' ? $pricing->price * 0.5 : $pricing->price;
+                $totalPrice = $request->payment_scheme === 'dp' ? $pricing->price * 0.5 : $pricing->price;
 
-            $promo = null;
-            if (! empty($validated['promo_code'])) {
-                $promo = Promo::where('code', strtoupper($validated['promo_code']))->first();
+                $promo = null;
+                if (! empty($request->promo_code)) {
+                    $promo = Promo::where('code', strtoupper($request->promo_code))->first();
 
-                if (! $promo || ! $promo->isValid((float) $validated['total_price'])) {
-                    return $this->clientError('Kode promo tidak valid atau tidak dapat digunakan.');
+                    if (! $promo || ! $promo->isValid((float) $totalPrice)) {
+                        throw new \Exception('Kode promo tidak valid atau tidak dapat digunakan.');
+                    }
+
+                    $discount = $promo->discountAmount((float) $totalPrice);
+                    $totalPrice = max(0, (float) $totalPrice - $discount);
+
+                    if ($promo->type === 'bonus_days' && $promo->bonusDays() > 0) {
+                        $dueDate->addDays($promo->bonusDays());
+                    }
                 }
 
-                $discount = $promo->discountAmount((float) $totalPrice);
-                $totalPrice = max(0, (float) $totalPrice - $discount);
+                $bill = Bill::create([
+                    'tenant_id'      => $tenant->id,
+                    'room_id'        => $room->id,
+                    'total_price'    => $request->payment_scheme === 'dp' ? 0 : $totalPrice,
+                    'dp_amount'      => $request->payment_scheme === 'dp' ? $totalPrice : 0,
+                    'start_date'     => $startDate,
+                    'due_date'       => $dueDate,
+                    'payment_scheme' => $request->payment_scheme,
+                    'status'         => 'unpaid',
+                ]);
 
-                if ($promo->type === 'bonus_days' && $promo->bonusDays() > 0) {
-                    $dueDate->addDays($promo->bonusDays());
-                }
-            }
-
-            $validated = [
-                'tenant_id'      => $tenant->id,
-                'room_id'        => $room->id,
-                'total_price'    => $request->payment_scheme === 'dp' ? 0 : $totalPrice,
-                'dp_amount'      => $request->payment_scheme === 'dp' ? $totalPrice : 0,
-                'start_date'     => $startDate,
-                'due_date'       => $dueDate,
-                'payment_scheme' => $request->payment_scheme,
-                'status'     => 'unpaid',
-            ];
-
-            $transaction = null;
-            DB::transaction(function () use ($validated, $promo, &$transaction) {
-                $bill = Bill::create($validated);
                 $transaction = TransactionService::makeTransaction($bill, 'midtrans');
 
-                 $tenant = \App\Models\Tenant::find($validated['tenant_id']);
-
-                $tenant = \App\Models\Tenant::find($validated['tenant_id']);
-                if (! $tenant->rooms()->where('rooms.id', $validated['room_id'])->exists()) {
-                    $tenant->rooms()->attach($validated['room_id']);
+                if (! $tenant->rooms()->where('rooms.id', $room->id)->exists()) {
+                    $tenant->rooms()->attach($room->id);
                 }
 
                 if ($promo) {
                     $promo->increment('usage_count');
                 }
+
+                return $transaction;
             });
-            DB::commit();
 
             return $this->success($transaction, 'Booking successful');
         } catch (\Exception $e) {
-            DB::rollBack();
             return $this->serverError($e);
         }
     }

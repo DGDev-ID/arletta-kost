@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Models\TransactionRefund;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -50,7 +51,7 @@ class TransactionController extends Controller
 
     public function show(Transaction $transaction): Response
     {
-        $transaction->load(['bill.tenant', 'bill.room', 'details']);
+        $transaction->load(['bill.tenant', 'bill.room.roomCategory.kost', 'details']);
 
         $data = [
             'id' => $transaction->id,
@@ -71,13 +72,17 @@ class TransactionController extends Controller
         ];
 
         $bill = [
-            'id' => $transaction->bill->id,
-            'total_price' => (float) $transaction->bill->total_price,
-            'start_date' => $transaction->bill->start_date->format('d-m-Y'),
-            'due_date' => $transaction->bill->due_date->format('d-m-Y'),
-            'status' => $transaction->bill->status,
+            'id'             => $transaction->bill->id,
+            'total_price'    => (float) $transaction->bill->total_price,
+            'start_date'     => $transaction->bill->start_date->format('d-m-Y'),
+            'due_date'       => $transaction->bill->due_date->format('d-m-Y'),
+            'status'         => $transaction->bill->status,
             'payment_scheme' => $transaction->bill->payment_scheme,
-            'dp_amount' => (float) $transaction->bill->dp_amount,
+            'dp_amount'      => (float) $transaction->bill->dp_amount,
+            'room_number'    => $transaction->bill->room->room_number ?? '-',
+            'category_name'  => $transaction->bill->room->roomCategory->name ?? '-',
+            'kost_name'      => $transaction->bill->room->roomCategory->kost->name ?? 'Arletta Kost',
+            'kost_address'   => $transaction->bill->room->roomCategory->kost->address ?? '-',
         ];
 
         $details = $transaction->details()
@@ -106,6 +111,63 @@ class TransactionController extends Controller
             'details' => $details,
             'refunds' => $refunds,
         ]);
+    }
+
+    public function invoice(Transaction $transaction)
+    {
+        $transaction->load(['bill.tenant', 'bill.room.roomCategory.kost', 'details']);
+
+        $formatRupiah = fn ($v) => 'Rp ' . number_format((float) $v, 0, ',', '.');
+
+        $data = [
+            'transaction' => [
+                'order_id'         => $transaction->order_id,
+                'payment_type'     => $transaction->payment_type,
+                'transaction_type' => $transaction->transaction_type,
+                'midtrans_method'  => $transaction->midtrans_method,
+                'transaction_fee'  => (float) $transaction->transaction_fee,
+                'fee_formatted'    => $formatRupiah($transaction->transaction_fee),
+                'total_price'      => (float) $transaction->total_price,
+                'total_price_formatted' => $formatRupiah($transaction->total_price),
+                'status'           => $transaction->status,
+                'created_at'       => $transaction->created_at->format('d M Y, H:i'),
+            ],
+            'tenant' => [
+                'name'         => $transaction->bill->tenant->name ?? '-',
+                'phone_number' => $transaction->bill->tenant->phone_number ?? '-',
+                'email'        => $transaction->bill->tenant->email ?? '',
+            ],
+            'bill' => [
+                'payment_scheme'        => $transaction->bill->payment_scheme,
+                'total_price'           => (float) $transaction->bill->total_price,
+                'total_price_formatted' => $formatRupiah($transaction->bill->total_price),
+                'dp_amount'             => (float) $transaction->bill->dp_amount,
+                'dp_amount_formatted'   => $formatRupiah($transaction->bill->dp_amount),
+                'start_date'            => $transaction->bill->start_date->format('d M Y'),
+                'due_date'              => $transaction->bill->due_date->format('d M Y'),
+            ],
+            'room' => [
+                'room_number'   => $transaction->bill->room->room_number ?? '-',
+                'category_name' => $transaction->bill->room->roomCategory->name ?? '-',
+            ],
+            'kost' => [
+                'name'    => $transaction->bill->room->roomCategory->kost->name ?? 'Arletta Kost',
+                'address' => $transaction->bill->room->roomCategory->kost->address ?? '-',
+            ],
+        ];
+
+        $pdf = Pdf::loadView('pdf.invoice', $data)
+            ->setPaper('A4', 'portrait')
+            ->setOptions([
+                'dpi'                     => 96,
+                'defaultFont'             => 'DejaVu Sans',
+                'isRemoteEnabled'         => false,
+                'isHtml5ParserEnabled'    => true,
+                'isFontSubsettingEnabled' => true,
+                'enable_php'              => false,
+            ]);
+
+        return $pdf->download('Invoice-' . $transaction->order_id . '.pdf');
     }
 
     public function refund(Request $request, Transaction $transaction): RedirectResponse

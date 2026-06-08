@@ -7,7 +7,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
-import { Eye, Search } from 'lucide-vue-next';
+import { Download, Eye, Search } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 
 interface TransactionItem {
@@ -156,11 +156,24 @@ const formatCurrency = (value: number) => {
                             </td>
                             <td class="px-4 py-3 text-xs">{{ trx.created_at }}</td>
                             <td class="px-4 py-3 text-right">
-                                <Button variant="ghost" size="icon" class="h-8 w-8" as-child title="Detail">
-                                    <Link :href="route('transactions.show', trx.id)">
-                                        <Eye class="h-4 w-4" />
-                                    </Link>
-                                </Button>
+                                <div class="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="icon" class="h-8 w-8" as-child title="Detail">
+                                        <Link :href="route('transactions.show', trx.id)">
+                                            <Eye class="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        class="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                        as-child
+                                        title="Download Invoice"
+                                    >
+                                        <a :href="route('transactions.invoice', trx.id)" target="_blank">
+                                            <Download class="h-4 w-4" />
+                                        </a>
+                                    </Button>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
