@@ -15,6 +15,8 @@ class Transaction extends Model
         'payment_type',
         'midtrans_method',
         'transaction_fee',
+        'person',
+        'charge_person_fee',
         'total_price',
         'status',
         'snap_token',
@@ -23,8 +25,9 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
-            'transaction_fee' => 'decimal:2',
-            'total_price' => 'decimal:2',
+            'transaction_fee'    => 'decimal:2',
+            'charge_person_fee'  => 'decimal:2',
+            'total_price'        => 'decimal:2',
         ];
     }
 

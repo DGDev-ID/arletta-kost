@@ -12,6 +12,7 @@ class RoomPricing extends Model
         'room_category_id',
         'duration_days',
         'price',
+        'charge_after_max_person',
     ];
 
     public function roomCategory(): BelongsTo

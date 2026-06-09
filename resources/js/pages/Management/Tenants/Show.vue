@@ -77,6 +77,7 @@ interface PricingItem {
     bonus_days?: number;
     cashback?: number;
     applied_promos?: any[];
+    charge_after_max_person?: number;
 }
 
 interface CategoryItem {
@@ -84,6 +85,7 @@ interface CategoryItem {
     name: string;
     kost_name: string;
     daily_price: number;
+    max_person: number;
     pricings: PricingItem[];      // pricings non-harian (duration_days != 1)
     all_pricings: PricingItem[];  // semua pricings termasuk harian
     gender?: string | null;
@@ -137,6 +139,7 @@ const billForm = useForm({
     start_date: '',
     due_date: '',
     promo_code: '',
+    person: 1 as number,
 });
 
 // dpAmount and displayTotalPrice are declared below (after promoResult)
@@ -158,13 +161,17 @@ const promoError      = ref('');
 const promoLoading    = ref(false);
 const dpAmount = computed(() => {
     const basePrice = promoResult.value?.final_price ?? billForm.total_price;
+    const withCharge = basePrice + personChargeFee.value;
     if (billForm.payment_scheme === 'dp') {
-        return basePrice * 0.5;
+        return withCharge * 0.5;
     }
     return null;
 });
 
-const displayTotalPrice = computed(() => promoResult.value?.final_price ?? billForm.total_price);
+const displayTotalPrice = computed(() => {
+    const basePrice = promoResult.value?.final_price ?? billForm.total_price;
+    return basePrice + personChargeFee.value;
+});
 
 // Auto-uppercase promo code input
 watch(promoCodeInput, (val) => {
@@ -231,6 +238,26 @@ const filteredPricings = computed(() => {
     if (!billForm.category_id) return [];
     const cat = props.categories.find(c => c.id === billForm.category_id);
     return cat?.pricings ?? []; // already filtered on backend (no duration_days==1)
+});
+
+// max_person dari kategori yang dipilih
+const selectedCategoryMaxPerson = computed(() => {
+    if (!billForm.category_id) return 1;
+    const cat = props.categories.find(c => c.id === billForm.category_id);
+    return cat?.max_person ?? 1;
+});
+
+// charge_after_max_person dari pricing yang dipilih
+const selectedPricingChargePerPerson = computed(() => {
+    if (!billForm.pricing_id) return 0;
+    const p = filteredPricings.value.find(p => p.id === billForm.pricing_id);
+    return p?.charge_after_max_person ?? 0;
+});
+
+// Biaya ekstra karena person melebihi max_person
+const personChargeFee = computed(() => {
+    const extra = Math.max(0, (billForm.person ?? 0) - selectedCategoryMaxPerson.value);
+    return extra * selectedPricingChargePerPerson.value;
 });
 
 // Harga harian dari kategori yang dipilih
@@ -322,6 +349,7 @@ watch(() => billForm.category_id, () => {
     billForm.pricing_id = '';
     billForm.total_price = 0;
     billForm.due_date = '';
+    billForm.person = selectedCategoryMaxPerson.value || 1;
     // Reset booking_type ke monthly bila kategori berubah
     if (billForm.booking_type === 'daily' && !hasDailyPricing.value) {
         billForm.booking_type = 'monthly';
@@ -336,13 +364,19 @@ const minStartDate = computed(() => {
 
 
 const submitBill = () => {
+    // Send pricing_id as room_pricing_id for backend charge calculation
+    const formData: any = {
+        ...billForm.data(),
+        room_pricing_id: billForm.pricing_id || null,
+    };
     // No longer prevent past dates - allow flexibility in billing
-    billForm.post(route('management.bills.store'), {
+    billForm.transform(() => formData).post(route('management.bills.store'), {
         preserveScroll: true,
         onSuccess: () => {
             showBillDialog.value = false;
             clearPromo();
             billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date', 'promo_code');
+            billForm.person = 1;
         },
     });
 };
@@ -848,6 +882,34 @@ const allBills = computed(() => props.bills);
                     <div class="grid gap-2" v-if="billForm.booking_type === 'monthly'">
                         <Label for="due_date">Habis Masa</Label>
                         <Input id="due_date" v-model="billForm.due_date" type="date" disabled />
+                    </div>
+
+                    <!-- Jumlah Penghuni -->
+                    <div class="grid gap-2" v-if="billForm.category_id">
+                        <Label for="person_count">Jumlah Penghuni</Label>
+                        <Input
+                            id="person_count"
+                            v-model.number="billForm.person"
+                            type="number"
+                            :min="selectedCategoryMaxPerson"
+                            placeholder="Jumlah penghuni..."
+                        />
+                        <p class="text-xs text-muted-foreground">
+                            Maks. standar: <strong>{{ selectedCategoryMaxPerson }} orang</strong>.
+                            <template v-if="selectedPricingChargePerPerson > 0">
+                                Biaya tambahan per orang di atas standar:
+                                <strong>{{ formatCurrency(selectedPricingChargePerPerson) }}</strong>.
+                            </template>
+                        </p>
+                        <!-- Preview charge -->
+                        <div
+                            v-if="personChargeFee > 0"
+                            class="rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 px-3 py-2 text-xs text-orange-700 dark:text-orange-300"
+                        >
+                            Biaya tambahan penghuni:
+                            <strong>{{ formatCurrency(personChargeFee) }}</strong>
+                            ({{ billForm.person - selectedCategoryMaxPerson }} orang × {{ formatCurrency(selectedPricingChargePerPerson) }})
+                        </div>
                     </div>
 
                     <!-- Total Price (auto) -->

@@ -12,9 +12,10 @@ class TransactionService
 {
     public static function makeTransaction(
         Bill $bill,
-        string $paymentType
+        string $paymentType,
+        array $extra = []
     ): Transaction {
-        $transaction = $bill->transactions()->create([
+        $transaction = $bill->transactions()->create(array_merge([
             'order_id'         => 'KOST-' . $bill->id . '-' . now()->timestamp,
             'payment_type'     => $paymentType,
             'transaction_type' => $bill->payment_scheme === 'dp'
@@ -24,7 +25,7 @@ class TransactionService
                 ? $bill->dp_amount
                 : $bill->total_price,
             'status'           => 'pending'
-        ]);
+        ], $extra));
 
         $transaction->details()->create([
             'status' => $transaction->status,

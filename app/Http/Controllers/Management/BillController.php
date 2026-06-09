@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Management;
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\Promo;
+use App\Models\RoomPricing;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use Illuminate\Http\RedirectResponse;
@@ -17,15 +18,28 @@ class BillController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'tenant_id'      => 'required|exists:tenants,id',
-            'room_id'        => 'required|exists:rooms,id',
-            'booking_type'   => 'required|in:monthly,daily',
-            'total_price'    => 'required|numeric|min:0',
-            'start_date'     => 'required|date',
-            'due_date'       => 'required|date|after_or_equal:start_date',
-            'payment_scheme' => 'required|in:full_pay,dp',
-            'promo_code'     => 'nullable|string|max:50',
+            'tenant_id'       => 'required|exists:tenants,id',
+            'room_id'         => 'required|exists:rooms,id',
+            'room_pricing_id' => 'nullable|exists:room_pricings,id',
+            'booking_type'    => 'required|in:monthly,daily',
+            'total_price'     => 'required|numeric|min:0',
+            'start_date'      => 'required|date',
+            'due_date'        => 'required|date|after_or_equal:start_date',
+            'payment_scheme'  => 'required|in:full_pay,dp',
+            'promo_code'      => 'nullable|string|max:50',
+            'person'          => 'nullable|integer|min:1',
         ]);
+
+        // Resolve person charge if pricing is given
+        $chargePerson = 0;
+        $personCount  = $validated['person'] ?? null;
+        if ($personCount && !empty($validated['room_pricing_id'])) {
+            $pricing      = RoomPricing::with('roomCategory')->find($validated['room_pricing_id']);
+            $maxPerson    = $pricing?->roomCategory?->max_person ?? 2;
+            $extraPersons = max(0, (int) $personCount - $maxPerson);
+            $chargePerson = $extraPersons * (float) ($pricing?->charge_after_max_person ?? 0);
+            $validated['total_price'] = (float) $validated['total_price'] + $chargePerson;
+        }
 
         $validated['status'] = 'unpaid';
 
@@ -54,13 +68,22 @@ class BillController extends Controller
             $validated['dp_amount'] = $validated['total_price'] * 0.5;
         }
 
-        // Remove promo_code from bill payload
+        // Remove fields not in bills table
         unset($validated['promo_code']);
+        unset($validated['room_pricing_id']);
+        unset($validated['person']);
 
-        DB::transaction(function () use ($validated, $promo) {
+
+        DB::transaction(function () use ($validated, $promo, $chargePerson, $personCount) {
             $bill = Bill::create($validated);
 
-            $transaction = TransactionService::makeTransaction($bill, 'manual');
+            $extra = [];
+            if ($personCount !== null) {
+                $extra['person']            = (int) $personCount;
+                $extra['charge_person_fee'] = $chargePerson;
+            }
+
+            $transaction = TransactionService::makeTransaction($bill, 'manual', $extra);
 
             // Attach the room to the tenant (if not already attached)
             $tenant = \App\Models\Tenant::find($validated['tenant_id']);

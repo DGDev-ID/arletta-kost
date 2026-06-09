@@ -42,6 +42,7 @@ interface PricingItem {
     id?: number;
     duration_days: number | null;
     price: number | null;
+    charge_after_max_person: number | null;
     promos: PromoItem[];
 }
 
@@ -51,6 +52,7 @@ interface CategoryData {
     name: string;
     description: string | null;
     gender?: string | null;
+    max_person?: number | null;
     images: ImageItem[];
     details: DetailItem[];
 }
@@ -73,11 +75,13 @@ const kost_id = ref(props.category?.kost_id ?? '');
 const name = ref(props.category?.name ?? '');
 const gender = ref<string | null>(props.category?.gender ?? 'mixed');
 const description = ref(props.category?.description ?? '');
+const max_person = ref<number | null>(props.category?.max_person ?? 2);
 const details = ref<DetailItem[]>(props.category?.details?.map(d => ({ ...d })) ?? []);
 const pricings = ref<PricingItem[]>(props.category?.pricings?.map((p: any) => ({
     id: p.id,
     duration_days: p.duration_days,
     price: p.price,
+    charge_after_max_person: p.charge_after_max_person ?? 100000,
     promos: (p.promos ?? []).map((r: any) => ({ id: r.id, type: r.type, value: r.value ?? 0 })),
 })) ?? []);
 const existingImages = ref<ImageItem[]>(props.category?.images?.map(i => ({ ...i })) ?? []);
@@ -114,7 +118,7 @@ const addDetail = () => {
 
 // Pricing handlers
 const addPricing = () => {
-    pricings.value.push({ duration_days: 30, price: 0, promos: [] });
+    pricings.value.push({ duration_days: 30, price: 0, charge_after_max_person: 100000, promos: [] });
 };
 
 const removePricing = (index: number) => {
@@ -137,17 +141,21 @@ const formatInputRupiah = (value: number | null) => {
 
 // Handler yang baru (menerima string/angka, bukan Event DOM)
 const handlePriceInput = (val: string | number | undefined, pidx: number) => {
-    // Jika input kosong (user menghapus semua angka)
     if (!val) {
         pricings.value[pidx].price = null;
         return;
     }
-    
-    // Pastikan val menjadi string, lalu hapus semua karakter selain angka
     const rawValue = String(val).replace(/\D/g, '');
-    
-    // Simpan nilai murni ke state
     pricings.value[pidx].price = rawValue ? parseInt(rawValue, 10) : null;
+};
+
+const handleChargeInput = (val: string | number | undefined, pidx: number) => {
+    if (!val) {
+        pricings.value[pidx].charge_after_max_person = null;
+        return;
+    }
+    const rawValue = String(val).replace(/\D/g, '');
+    pricings.value[pidx].charge_after_max_person = rawValue ? parseInt(rawValue, 10) : null;
 };
 
 // Remove detail row
@@ -192,6 +200,7 @@ const submit = () => {
     formData.append('name', name.value);
     formData.append('gender', String(gender.value ?? ''));
     formData.append('description', description.value);
+    formData.append('max_person', String(max_person.value ?? 2));
 
     // Images
     newImages.value.forEach((file) => {
@@ -222,6 +231,7 @@ const submit = () => {
         if (p.id) formData.append(`pricings[${i}][id]`, String(p.id));
         formData.append(`pricings[${i}][duration_days]`, String(p.duration_days ?? ''));
         formData.append(`pricings[${i}][price]`, String(p.price ?? 0));
+        formData.append(`pricings[${i}][charge_after_max_person]`, String(p.charge_after_max_person ?? 0));
         (p.promos || []).forEach((pr, j) => {
             if (pr.id) formData.append(`pricings[${i}][promos][${j}][id]`, String(pr.id));
             formData.append(`pricings[${i}][promos][${j}][type]`, pr.type || '');
@@ -295,6 +305,20 @@ const submit = () => {
                             <option value="female">Female</option>
                         </select>
                         <InputError :message="errors.gender" />
+                    </div>
+
+                    <!-- Max Person -->
+                    <div class="grid gap-2">
+                        <Label for="max_person">Kapasitas Penghuni Standar</Label>
+                        <Input
+                            id="max_person"
+                            v-model.number="max_person"
+                            type="number"
+                            min="1"
+                            placeholder="Maksimal penghuni tanpa charge tambahan (mis. 2)"
+                        />
+                        <p class="text-xs text-muted-foreground">Jumlah orang maksimal untuk kamar ini tanpa terkena biaya tambahan (Charge Person).</p>
+                        <InputError :message="errors.max_person" />
                     </div>
 
                     <!-- Description -->
@@ -437,11 +461,22 @@ const submit = () => {
                                 <div class="w-48 grid gap-2">
                                     <Label>Harga</Label>
                                     <Input 
-        type="text" 
-        :model-value="pricing.price ? formatRupiah(pricing.price) : ''"
-        @update:model-value="(val) => handlePriceInput(val, pidx)"
-        placeholder="Rp 0"
-    />
+                                        type="text" 
+                                        :model-value="pricing.price ? formatRupiah(pricing.price) : ''"
+                                        @update:model-value="(val) => handlePriceInput(val, pidx)"
+                                        placeholder="Rp 0"
+                                    />
+                                    <InputError :message="errors[`pricings.${pidx}.price`]" />
+                                </div>
+                                <div class="w-48 grid gap-2">
+                                    <Label>Charge Extra Person / Orang</Label>
+                                    <Input 
+                                        type="text" 
+                                        :model-value="pricing.charge_after_max_person ? formatRupiah(pricing.charge_after_max_person) : ''"
+                                        @update:model-value="(val) => handleChargeInput(val, pidx)"
+                                        placeholder="Rp 0"
+                                    />
+                                    <InputError :message="errors[`pricings.${pidx}.charge_after_max_person`]" />
                                 </div>
                                 <div class="flex items-start">
                                     <Button type="button" variant="ghost" size="icon" class="h-9 w-9 mt-6 text-destructive" @click="removePricing(pidx)">

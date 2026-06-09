@@ -164,6 +164,7 @@ class TenantController extends Controller
                 'id'          => $cat->id,
                 'name'        => $cat->name,
                 'kost_name'   => $cat->kost->name,
+                'max_person'  => $cat->max_person,
                 // pricing dengan duration_days == 1 dianggap sebagai harga harian
                 'daily_price' => (float) ($cat->pricings->firstWhere('duration_days', 1)?->price ?? 0),
                 'pricings'    => $cat->pricings
@@ -172,25 +173,27 @@ class TenantController extends Controller
                     ->map(function ($p) {
                         $fp = $p->getFinalPrice();
                         return [
-                            'id'            => $p->id,
-                            'duration_days' => $p->duration_days,
-                            'price'         => (float) $p->price,
-                            'final_price'   => (float) $fp['final_price'],
-                            'bonus_days'    => $fp['bonus_days'],
-                            'cashback'      => $fp['cashback'],
-                            'applied_promos'=> $fp['applied_promos'],
+                            'id'                     => $p->id,
+                            'duration_days'          => $p->duration_days,
+                            'price'                  => (float) $p->price,
+                            'final_price'            => (float) $fp['final_price'],
+                            'bonus_days'             => $fp['bonus_days'],
+                            'cashback'               => $fp['cashback'],
+                            'applied_promos'         => $fp['applied_promos'],
+                            'charge_after_max_person'=> (float) $p->charge_after_max_person,
                         ];
                     })->toArray(),
                 'all_pricings' => $cat->pricings->map(function ($p) {
                     $fp = $p->getFinalPrice();
                     return [
-                        'id'            => $p->id,
-                        'duration_days' => $p->duration_days,
-                        'price'         => (float) $p->price,
-                        'final_price'   => (float) $fp['final_price'],
-                        'bonus_days'    => $fp['bonus_days'],
-                        'cashback'      => $fp['cashback'],
-                        'applied_promos'=> $fp['applied_promos'],
+                        'id'                     => $p->id,
+                        'duration_days'          => $p->duration_days,
+                        'price'                  => (float) $p->price,
+                        'final_price'            => (float) $fp['final_price'],
+                        'bonus_days'             => $fp['bonus_days'],
+                        'cashback'               => $fp['cashback'],
+                        'applied_promos'         => $fp['applied_promos'],
+                        'charge_after_max_person'=> (float) $p->charge_after_max_person,
                     ];
                 })->toArray(),
             ]);

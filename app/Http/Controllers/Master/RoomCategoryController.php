@@ -90,6 +90,7 @@ class RoomCategoryController extends Controller
             'name'                       => 'required|string|max:255',
             'gender'                     => 'nullable|in:male,female,mixed',
             'description'                => 'nullable|string',
+            'max_person'                 => 'nullable|integer|min:1',
             'images'                     => 'nullable|array',
             'images.*'                   => 'image|max:20480',
             'cover_image_index'          => 'nullable|integer|min:0',
@@ -99,6 +100,7 @@ class RoomCategoryController extends Controller
             'pricings'                   => 'nullable|array',
             'pricings.*.duration_days'   => 'required_with:pricings|integer|min:1',
             'pricings.*.price'           => 'required_with:pricings|numeric|min:0',
+            'pricings.*.charge_after_max_person' => 'nullable|numeric|min:0',
             'pricings.*.promos'          => 'nullable|array',
             'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|in:discount_percent,discount_amount,bonus_days,cashback',
             'pricings.*.promos.*.value'  => 'required_with:pricings.*.promos|numeric|min:0',
@@ -110,6 +112,7 @@ class RoomCategoryController extends Controller
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
                 'gender' => $validated['gender'] ?? null,
+                'max_person' => $validated['max_person'] ?? 2,
             ]);
 
             // Handle images with S3Helper
@@ -145,6 +148,7 @@ class RoomCategoryController extends Controller
                     $p = $category->pricings()->create([
                         'duration_days' => $pricing['duration_days'],
                         'price' => $pricing['price'],
+                        'charge_after_max_person' => $pricing['charge_after_max_person'] ?? 100000,
                     ]);
 
                     if (! empty($pricing['promos'])) {
@@ -174,6 +178,7 @@ class RoomCategoryController extends Controller
                 'name' => $roomCategory->name,
                 'description' => $roomCategory->description,
                 'gender' => $roomCategory->gender,
+                'max_person' => $roomCategory->max_person,
                 'images' => $roomCategory->images->map(fn($img) => [
                     'id' => $img->id,
                     'img_url' => $img->img_url,
@@ -189,6 +194,7 @@ class RoomCategoryController extends Controller
                     'id' => $p->id,
                     'duration_days' => $p->duration_days,
                     'price' => $p->price,
+                    'charge_after_max_person' => $p->charge_after_max_person,
                     'promos' => $p->promos->map(fn($r) => [
                         'id'    => $r->id,
                         'type'  => $r->type,
@@ -232,6 +238,7 @@ class RoomCategoryController extends Controller
             'name'                       => 'required|string|max:255',
             'gender'                     => 'nullable|in:male,female,mixed',
             'description'                => 'nullable|string',
+            'max_person'                 => 'nullable|integer|min:1',
             'images'                     => 'nullable|array',
             'images.*'                   => 'image|max:20480',
             'cover_image_id'             => 'nullable|integer|exists:room_category_images,id',
@@ -246,6 +253,7 @@ class RoomCategoryController extends Controller
             'pricings.*.id'              => 'nullable|integer',
             'pricings.*.duration_days'   => 'required_with:pricings|integer|min:1',
             'pricings.*.price'           => 'required_with:pricings|numeric|min:0',
+            'pricings.*.charge_after_max_person' => 'nullable|numeric|min:0',
             'pricings.*.promos'          => 'nullable|array',
             'pricings.*.promos.*.id'     => 'nullable|integer',
             'pricings.*.promos.*.type'   => 'required_with:pricings.*.promos|in:discount_percent,discount_amount,bonus_days,cashback',
@@ -258,6 +266,7 @@ class RoomCategoryController extends Controller
                 'name'        => $validated['name'],
                 'description' => $validated['description'] ?? null,
                 'gender'      => $validated['gender'] ?? null,
+                'max_person'  => $validated['max_person'] ?? 2,
             ]);
 
             // Remove deleted images
@@ -333,6 +342,7 @@ class RoomCategoryController extends Controller
                         $roomCategory->pricings()->where('id', $pricing['id'])->update([
                             'duration_days' => $pricing['duration_days'],
                             'price' => $pricing['price'],
+                            'charge_after_max_person' => $pricing['charge_after_max_person'] ?? 100000,
                         ]);
                         $pModel = $roomCategory->pricings()->where('id', $pricing['id'])->first();
                         $existingPricingIds[] = $pricing['id'];
@@ -340,6 +350,7 @@ class RoomCategoryController extends Controller
                         $pModel = $roomCategory->pricings()->create([
                             'duration_days' => $pricing['duration_days'],
                             'price' => $pricing['price'],
+                            'charge_after_max_person' => $pricing['charge_after_max_person'] ?? 100000,
                         ]);
                         $existingPricingIds[] = $pModel->id;
                     }

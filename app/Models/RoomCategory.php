@@ -13,6 +13,7 @@ class RoomCategory extends Model
         'name',
         'description',
         'gender',
+        'max_person',
     ];
 
     public function kost(): BelongsTo

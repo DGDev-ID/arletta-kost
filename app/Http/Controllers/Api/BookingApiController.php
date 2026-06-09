@@ -38,11 +38,18 @@ class BookingApiController extends ApiBaseController
 
             'payment_method' => 'required|string',
             'promo_code'     => 'nullable|string|max:50',
+            'person'         => 'required|integer|min:1',
         ]);
 
         try {
             $room = Room::findOrFail($request->room_id);
             $pricing = RoomPricing::findOrFail($request->room_pricing_id);
+            $roomCategory = $pricing->roomCategory;
+
+            // Validate person >= max_person of the selected room category
+            $request->validate([
+                'person' => 'min:' . $roomCategory->max_person,
+            ]);
 
             $startDate = Carbon::parse($request->start_date);
             $dueDate = (clone $startDate)->addDays($pricing->duration_days);
@@ -51,12 +58,16 @@ class BookingApiController extends ApiBaseController
                 return $this->clientError('Kamar sudah dipesan atau sedang digunakan pada tanggal yang dipilih. Silakan pilih tanggal atau kamar lain.');
             }
 
-            $transaction = DB::transaction(function () use ($request, $room, $pricing, $startDate, $dueDate) {
+            $transaction = DB::transaction(function () use ($request, $room, $pricing, $roomCategory, $startDate, $dueDate) {
                 $tenant = Tenant::create([
                     'name' => $request->cust_name,
                     'email' => $request->cust_email,
                     'phone_number' => $request->cust_phone,
                 ]);
+
+                // Calculate extra person charge
+                $extraPersons = max(0, (int) $request->person - $roomCategory->max_person);
+                $chargePerson = $extraPersons * (float) $pricing->charge_after_max_person;
 
                 $totalPrice = $request->payment_scheme === 'dp' ? $pricing->price * 0.5 : $pricing->price;
 
@@ -76,6 +87,9 @@ class BookingApiController extends ApiBaseController
                     }
                 }
 
+                // Add person charge to total
+                $totalPrice += $chargePerson;
+
                 $bill = Bill::create([
                     'tenant_id'      => $tenant->id,
                     'room_id'        => $room->id,
@@ -87,7 +101,10 @@ class BookingApiController extends ApiBaseController
                     'status'         => 'unpaid',
                 ]);
 
-                $transaction = TransactionService::makeTransaction($bill, 'midtrans');
+                $transaction = TransactionService::makeTransaction($bill, 'midtrans', [
+                    'person'            => (int) $request->person,
+                    'charge_person_fee' => $chargePerson,
+                ]);
 
                 if (! $tenant->rooms()->where('rooms.id', $room->id)->exists()) {
                     $tenant->rooms()->attach($room->id);
