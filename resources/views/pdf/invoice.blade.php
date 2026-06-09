@@ -139,7 +139,21 @@
     <table class="header-table">
         <tr>
             <td style="width: 60%; vertical-align: middle;">
-                <div class="brand">Arletta Kost</div>
+                <table style="width: auto; border-collapse: collapse;">
+                    <tr>
+                        @php
+                            $iconPath = public_path('images/arletta-kost-icon.png');
+                            $iconBase64 = base64_encode(file_get_contents($iconPath));
+                            $iconSrc = 'data:image/png;base64,' . $iconBase64;
+                        @endphp
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <img src="{{ $iconSrc }}" style="height: 48px; width: 48px; object-fit: contain; display: block;">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <div class="brand">Arletta Kost</div>
+                        </td>
+                    </tr>
+                </table>
             </td>
             <td style="width: 40%; text-align: right; vertical-align: middle;">
                 <div class="inv-label">INVOICE</div>
