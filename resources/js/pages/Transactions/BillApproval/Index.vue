@@ -28,6 +28,8 @@ interface BillItem {
     due_date: string | null;
     status: string;
     pending_transaction_id?: number;
+    payment_type?: string | null;
+    midtrans_method?: string | null;
 }
 
 interface PaginationLink {
@@ -112,6 +114,7 @@ const showBill = (billId: number) => {
                                 <th class="px-4 py-3 text-left font-medium">Tenant</th>
                                 <th class="px-4 py-3 text-left font-medium">Phone</th>
                                 <th class="px-4 py-3 text-left font-medium">Room</th>
+                                <th class="px-4 py-3 text-left font-medium">Metode</th>
                                 <th class="px-4 py-3 text-left font-medium">Start</th>
                                 <th class="px-4 py-3 text-left font-medium">Due</th>
                                 <th class="px-4 py-3 text-left font-medium">Total</th>
@@ -120,13 +123,23 @@ const showBill = (billId: number) => {
                         </thead>
                         <tbody>
                             <tr v-if="pendingBills.data.length === 0">
-                                <td colspan="8" class="px-4 py-8 text-center text-muted-foreground">Tidak ada pending bill.</td>
+                                <td colspan="9" class="px-4 py-8 text-center text-muted-foreground">Tidak ada pending bill.</td>
                             </tr>
                             <tr v-for="(b, idx) in pendingBills.data" :key="b.id" class="border-b last:border-0">
                                 <td class="px-4 py-3 font-medium">{{ (pendingBills.from ?? 0) + idx }}</td>
                                 <td class="px-4 py-3">{{ b.tenant_name }}</td>
                                 <td class="px-4 py-3">{{ b.tenant_phone }}</td>
                                 <td class="px-4 py-3">{{ b.room_number }}</td>
+                                <td class="px-4 py-3">
+                                    <template v-if="b.payment_type === 'manual' || !b.payment_type">
+                                        <span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">Manual</span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/30 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-400 capitalize">
+                                            {{ b.midtrans_method ?? b.payment_type }}
+                                        </span>
+                                    </template>
+                                </td>
                                 <td class="px-4 py-3 text-xs">{{ b.start_date ?? '-' }}</td>
                                 <td class="px-4 py-3 text-xs">{{ b.due_date ?? '-' }}</td>
                                 <td class="px-4 py-3">{{ formatCurrency(b.total_price) }}</td>
@@ -163,6 +176,7 @@ const showBill = (billId: number) => {
                                 <th class="px-4 py-3 text-left font-medium">Tenant</th>
                                 <th class="px-4 py-3 text-left font-medium">Phone</th>
                                 <th class="px-4 py-3 text-left font-medium">Room</th>
+                                <th class="px-4 py-3 text-left font-medium">Metode</th>
                                 <th class="px-4 py-3 text-left font-medium">Start</th>
                                 <th class="px-4 py-3 text-left font-medium">Due</th>
                                 <th class="px-4 py-3 text-left font-medium">Total</th>
@@ -172,19 +186,36 @@ const showBill = (billId: number) => {
                         </thead>
                         <tbody>
                             <tr v-if="historyBills.data.length === 0">
-                                <td colspan="8" class="px-4 py-8 text-center text-muted-foreground">Tidak ada history bill.</td>
+                                <td colspan="10" class="px-4 py-8 text-center text-muted-foreground">Tidak ada history bill.</td>
                             </tr>
                             <tr v-for="(b, idx) in historyBills.data" :key="b.id" class="border-b last:border-0">
                                 <td class="px-4 py-3 font-medium">{{ (historyBills.from ?? 0) + idx }}</td>
                                 <td class="px-4 py-3">{{ b.tenant_name }}</td>
                                 <td class="px-4 py-3">{{ b.tenant_phone }}</td>
                                 <td class="px-4 py-3">{{ b.room_number }}</td>
+                                <td class="px-4 py-3">
+                                    <template v-if="b.payment_type === 'manual' || !b.payment_type">
+                                        <span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">Manual</span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/30 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-400 capitalize">
+                                            {{ b.midtrans_method ?? b.payment_type }}
+                                        </span>
+                                    </template>
+                                </td>
                                 <td class="px-4 py-3 text-xs">{{ b.start_date ?? '-' }}</td>
                                 <td class="px-4 py-3 text-xs">{{ b.due_date ?? '-' }}</td>
                                 <td class="px-4 py-3">{{ formatCurrency(b.total_price) }}</td>
                                 <td class="px-4 py-3">
-                                    <span :class="b.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                        {{ b.status }}
+                                    <span
+                                        class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize"
+                                        :class="{
+                                            'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400': b.status === 'paid',
+                                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': b.status === 'cancelled',
+                                            'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300': b.status === 'checked_out',
+                                        }"
+                                    >
+                                        {{ b.status === 'checked_out' ? 'Checked Out' : b.status }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-right">

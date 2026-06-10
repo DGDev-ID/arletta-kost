@@ -45,6 +45,7 @@ interface TransactionData {
     status: string;
     created_at: string;
     details: DetailItem[];
+    midtrans_method?: string | null;
 }
 
 const props = defineProps<{
@@ -186,9 +187,14 @@ const statusBadge = (s: string) => {
                                         <p class="text-xs text-muted-foreground">{{ t.created_at }}</p>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <span class="inline-flex rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-medium uppercase">
+                                        <span v-if="t.payment_type !== 'manual'" class="inline-flex rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-medium uppercase">
+                                            {{ t.midtrans_method }}
+                                        </span>
+                                        
+                                        <span v-else class="inline-flex rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-medium uppercase">
                                             {{ t.payment_type }}
                                         </span>
+
                                         <span :class="statusBadge(t.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
                                             {{ t.status }}
                                         </span>

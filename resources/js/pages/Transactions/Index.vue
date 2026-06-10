@@ -16,6 +16,7 @@ interface TransactionItem {
     tenant_name: string;
     room_number: string;
     payment_type: string;
+    midtrans_method: string | null;
     transaction_type: string;
     total_price: number;
     status: string;
@@ -146,7 +147,16 @@ const formatCurrency = (value: number) => {
                             <td class="px-4 py-3 font-mono text-xs font-medium">{{ trx.order_id }}</td>
                             <td class="px-4 py-3">{{ trx.tenant_name }}</td>
                             <td class="px-4 py-3">{{ trx.room_number }}</td>
-                            <td class="px-4 py-3 capitalize">{{ trx.payment_type }}</td>
+                            <td class="px-4 py-3">
+                                <template v-if="trx.payment_type === 'manual'">
+                                    <span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">Manual</span>
+                                </template>
+                                <template v-else>
+                                    <span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/30 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-400 capitalize">
+                                        {{ trx.midtrans_method ?? trx.payment_type }}
+                                    </span>
+                                </template>
+                            </td>
                             <td class="px-4 py-3 capitalize">{{ trx.transaction_type ? trx.transaction_type.replace('_', ' ') : 'Full Payment' }}</td>
                             <td class="px-4 py-3">{{ formatCurrency(trx.total_price) }}</td>
                             <td class="px-4 py-3">

@@ -33,13 +33,15 @@ class BillApprovalController extends Controller
                 'start_date' => $bill->start_date?->format('d-m-Y'),
                 'due_date' => $bill->due_date?->format('d-m-Y'),
                 'status' => $bill->status,
-                // Pass the pending transaction ID so the frontend can call makeSuccess/makeFailed on it
                 'pending_transaction_id' => $bill->transactions->first()?->id,
+                'payment_type'   => $bill->transactions->first()?->payment_type,
+                'midtrans_method'=> $bill->transactions->first()?->midtrans_method,
             ]);
 
-        // Table 2: History Bills (Paid or Cancelled)
-        $historyBills = Bill::with(['tenant', 'room.roomCategory.kost'])
-            ->whereIn('status', ['paid', 'cancelled'])
+        $historyBills = Bill::with(['tenant', 'room.roomCategory.kost', 'transactions' => function ($q) {
+            $q->latest()->limit(1);
+        }])
+            ->whereIn('status', ['paid', 'cancelled', 'checked_out'])
             ->latest()
             ->paginate(15, ['*'], 'history_page')
             ->through(fn (Bill $bill) => [
@@ -52,6 +54,8 @@ class BillApprovalController extends Controller
                 'start_date' => $bill->start_date?->format('d-m-Y'),
                 'due_date' => $bill->due_date?->format('d-m-Y'),
                 'status' => $bill->status,
+                'payment_type'   => $bill->transactions->first()?->payment_type,
+                'midtrans_method'=> $bill->transactions->first()?->midtrans_method,
             ]);
 
         return Inertia::render('Transactions/BillApproval/Index', [
@@ -99,6 +103,7 @@ class BillApprovalController extends Controller
                 'id' => $t->id,
                 'order_id' => $t->order_id,
                 'payment_type' => $t->payment_type,
+                'midtrans_method'=> $t->midtrans_method,
                 'total_price' => (float) $t->total_price,
                 'status' => $t->status,
                 'created_at' => $t->created_at->format('d-m-Y H:i'),

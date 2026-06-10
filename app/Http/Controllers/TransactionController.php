@@ -33,6 +33,7 @@ class TransactionController extends Controller
                 'tenant_name' => $trx->bill->tenant->name ?? '-',
                 'room_number' => $trx->bill->room->room_number ?? '-',
                 'payment_type' => $trx->payment_type,
+                'midtrans_method' => $trx->midtrans_method,
                 'transaction_type' => $trx->transaction_type,
                 'total_price' => (float) $trx->total_price,
                 'status' => $trx->status,
