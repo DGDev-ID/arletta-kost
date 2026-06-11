@@ -151,10 +151,11 @@ class TenantController extends Controller
         $categoriesQuery = RoomCategory::with(['kost', 'pricings.promos'])
             ->whereHas('rooms', fn($q) => $q->where('status', '!=', 'maintenance'));
 
-        // If tenant has a specific gender, only include categories that are either null (unisex) or match tenant gender
+        // If tenant has a specific gender, only include categories that are either null (unisex), 'mixed', or match tenant gender
         if ($tenant->gender) {
             $categoriesQuery->where(function ($q) use ($tenant) {
                 $q->whereNull('gender')
+                  ->orWhere('gender', 'mixed')
                   ->orWhere('gender', $tenant->gender);
             });
         }
@@ -204,10 +205,11 @@ class TenantController extends Controller
         }])
             ->where('status', '!=', 'maintenance');
 
-        // If tenant has a specific gender, only include rooms whose category is unisex (null) or matches tenant gender
+        // If tenant has a specific gender, only include rooms whose category is unisex (null), 'mixed', or matches tenant gender
         if ($tenant->gender) {
             $availableRoomsQuery->whereHas('roomCategory', function ($q) use ($tenant) {
                 $q->whereNull('gender')
+                  ->orWhere('gender', 'mixed')
                   ->orWhere('gender', $tenant->gender);
             });
         }
