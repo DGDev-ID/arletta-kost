@@ -14,8 +14,6 @@ class TransactionController extends Controller
 {
     public function index(Request $request): Response
     {
-        dd($request->headers->all());
-
         $search = $request->input('search', '');
         $status = $request->input('status', '');
         $paymentType = $request->input('payment_type', '');
