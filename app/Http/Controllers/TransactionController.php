@@ -41,6 +41,13 @@ class TransactionController extends Controller
                 'created_at' => $trx->created_at->format('d-m-Y H:i'),
             ]);
 
+        dd([
+            'url' => url('/transactions'),
+            'route' => route('transactions.index'),
+            'next' => $transactions->nextPageUrl(),
+            'secure' => request()->isSecure(),
+            'scheme' => request()->getScheme(),
+        ]);
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
             'filters' => [
