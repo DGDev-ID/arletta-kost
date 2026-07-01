@@ -48,7 +48,6 @@ const pageLinks = computed(() => props.meta.links.slice(1, -1));
                 v-if="meta.links[0].url"
                 :href="meta.links[0].url"
                 preserve-scroll
-                preserve-state
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             >
                 <ChevronLeft class="h-4 w-4" />
@@ -72,7 +71,6 @@ const pageLinks = computed(() => props.meta.links.slice(1, -1));
                     v-else-if="link.url && !link.active"
                     :href="link.url"
                     preserve-scroll
-                    preserve-state
                     class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground"
                 >
                     {{ cleanLabel(link.label) }}
@@ -90,7 +88,6 @@ const pageLinks = computed(() => props.meta.links.slice(1, -1));
                 v-if="meta.links[meta.links.length - 1].url"
                 :href="meta.links[meta.links.length - 1].url"
                 preserve-scroll
-                preserve-state
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground"
             >
                 <ChevronRight class="h-4 w-4" />

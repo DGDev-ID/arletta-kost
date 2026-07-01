@@ -27,6 +27,7 @@ class TransactionController extends Controller
             ->when($paymentType, fn ($q) => $q->where('payment_type', $paymentType))
             ->latest()
             ->paginate(15)
+            ->withQueryString()
             ->through(fn (Transaction $trx) => [
                 'id' => $trx->id,
                 'order_id' => $trx->order_id,
