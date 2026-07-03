@@ -29,6 +29,7 @@ class RoomController extends Controller
             }))
             ->latest()
             ->paginate(15)
+            ->withQueryString()
             ->through(fn (Room $room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,
