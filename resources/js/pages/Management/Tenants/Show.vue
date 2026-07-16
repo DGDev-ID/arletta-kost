@@ -140,6 +140,8 @@ const billForm = useForm({
     due_date: '',
     promo_code: '',
     person: 1 as number,
+    payment_type: 'manual' as 'manual' | 'debit' | 'midtrans',
+    renewal: false,
 });
 
 // dpAmount and displayTotalPrice are declared below (after promoResult)
@@ -375,8 +377,10 @@ const submitBill = () => {
         onSuccess: () => {
             showBillDialog.value = false;
             clearPromo();
-            billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date', 'promo_code');
+            billForm.reset('category_id', 'room_id', 'pricing_id', 'booking_type', 'total_price', 'payment_scheme', 'start_date', 'due_date', 'promo_code', 'payment_type', 'renewal');
             billForm.person = 1;
+            billForm.payment_type = 'manual';
+            billForm.renewal = false;
         },
     });
 };
@@ -484,20 +488,22 @@ const formatDuration = (days: number) => {
     return `${days} hari`;
 };
 
-// Filtered bills: show unpaid/pending with manual payment_type
+// Filtered bills: show unpaid with manual/debit payment_type (requires admin confirmation)
+const needsConfirmationPaymentTypes = ['manual', 'debit'];
+
 const manualBills = computed(() => {
     return props.bills.filter(bill => {
         const isUnpaidOrPending = bill.status === 'unpaid';
 
-        const hasManualTransaction = bill.transactions.some(
-            t => t.payment_type === 'manual'
+        const hasConfirmableTransaction = bill.transactions.some(
+            t => needsConfirmationPaymentTypes.includes(t.payment_type)
         );
 
         const hasNoFailedTransaction = !bill.transactions.some(
             t => t.status === 'failed'
         );
 
-        return isUnpaidOrPending && hasManualTransaction && hasNoFailedTransaction;
+        return isUnpaidOrPending && hasConfirmableTransaction && hasNoFailedTransaction;
     });
 });
 
@@ -628,15 +634,18 @@ const allBills = computed(() => props.bills);
                                         </span>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <div v-for="t in bill.transactions.filter(t => t.payment_type === 'manual')" :key="t.id" class="text-xs">
-                                            <span :class="statusBadge(t.status)" class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize">
-                                                {{ t.status }}
-                                            </span>
+                                        <div v-for="t in bill.transactions.filter(t => needsConfirmationPaymentTypes.includes(t.payment_type))" :key="t.id" class="text-xs">
+                                            <div class="flex items-center gap-1.5">
+                                                <span :class="statusBadge(t.status)" class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize">
+                                                    {{ t.status }}
+                                                </span>
+                                                <span class="text-muted-foreground capitalize">{{ t.payment_type }}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-4 py-3 text-right">
                                         <div class="flex items-center justify-end gap-1">
-                                            <template v-for="t in bill.transactions.filter(t => t.payment_type === 'manual' && t.status === 'pending')" :key="t.id">
+                                            <template v-for="t in bill.transactions.filter(t => needsConfirmationPaymentTypes.includes(t.payment_type) && t.status === 'pending')" :key="t.id">
                                                 <Button variant="outline" size="sm" class="h-7 text-xs text-green-700" @click="confirmAction(t.id, 'success')">
                                                     <CheckCircle class="mr-1 h-3 w-3" />
                                                     Make Success
@@ -739,9 +748,14 @@ const allBills = computed(() => props.bills);
                                     <td class="px-4 py-3">{{formatDate (bill.start_date) }}</td>
                                     <td class="px-4 py-3">{{ formatDate (bill.due_date) }}</td>
                                     <td class="px-4 py-3">
-                                        <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                            {{ bill.status }} <span v-if="bill.status === 'unpaid' && bill.transactions.some(t => t.status === 'failed')"> (Failed Transaction)</span>
-                                        </span>
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <span :class="statusBadge(bill.status)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                                {{ bill.status }} <span v-if="bill.status === 'unpaid' && bill.transactions.some(t => t.status === 'failed')"> (Failed Transaction)</span>
+                                            </span>
+                                            <span v-if="(bill as any).renewal" class="inline-flex rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                                Perpanjangan
+                                            </span>
+                                        </div>
                                     </td>
                                     <!-- <td class="px-4 py-3 text-right">
                                         <Button variant="ghost" size="sm" class="h-7 text-xs" @click="openStatusDialog(bill)"> Ubah Status </Button>
@@ -990,6 +1004,34 @@ const allBills = computed(() => props.bills);
                     <div class="grid gap-2" v-if="billForm.payment_scheme === 'dp'">
                         <Label>Nominal DP yang akan ditagihkan (50%)</Label>
                         <Input :model-value="formatCurrency(dpAmount || 0)" disabled class="bg-blue-50/50" />
+                    </div>
+
+                    <!-- Metode Pembayaran -->
+                    <div class="grid gap-2">
+                        <Label for="bill_payment_type">Metode Pembayaran</Label>
+                        <select
+                            id="bill_payment_type"
+                            v-model="billForm.payment_type"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="manual">Manual (Transfer / Tunai)</option>
+                            <option value="debit">Debit</option>
+                            <option value="midtrans">QRIS (Midtrans)</option>
+                        </select>
+                    </div>
+
+                    <!-- Perpanjangan -->
+                    <div class="flex items-start gap-3 rounded-md border border-input px-3 py-3">
+                        <input
+                            id="bill_renewal"
+                            type="checkbox"
+                            v-model="billForm.renewal"
+                            class="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+                        />
+                        <div>
+                            <label for="bill_renewal" class="text-sm font-medium cursor-pointer">Perpanjangan (tidak perlu TTD ulang)</label>
+                            <p class="text-xs text-muted-foreground mt-0.5">Centang jika ini merupakan perpanjangan sewa kamar yang sama. Bill ini tidak akan muncul di antrian tanda tangan.</p>
+                        </div>
                     </div>
 
                     <DialogFooter>

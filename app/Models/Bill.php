@@ -19,15 +19,17 @@ class Bill extends Model
         'due_date',
         'signature',
         'status',
+        'renewal',
     ];
 
     protected function casts(): array
     {
         return [
-            'start_date' => 'datetime',
-            'due_date' => 'datetime',
+            'start_date'  => 'datetime',
+            'due_date'    => 'datetime',
             'total_price' => 'decimal:2',
-            'dp_amount' => 'decimal:2',
+            'dp_amount'   => 'decimal:2',
+            'renewal'     => 'boolean',
         ];
     }
 

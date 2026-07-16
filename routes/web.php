@@ -77,6 +77,7 @@ Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transacti
     Route::delete('terms-conditions/{term}', [TermsConditionController::class, 'destroy'])->name('terms-conditions.destroy');
 
     Route::get('/', [TransactionController::class, 'index'])->name('index');
+    Route::get('/export', [TransactionController::class, 'export'])->name('export');
     Route::get('/{transaction}/invoice', [TransactionController::class, 'invoice'])->name('invoice');
     Route::get('/{transaction}', [TransactionController::class, 'show'])->name('show');
     Route::post('/{transaction}/refund', [TransactionController::class, 'refund'])->name('refund');

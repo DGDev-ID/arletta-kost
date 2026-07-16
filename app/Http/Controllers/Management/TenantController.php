@@ -137,6 +137,7 @@ class TenantController extends Controller
                 'kost_name' => $bill->room && $bill->room->roomCategory && $bill->room->roomCategory->kost ? $bill->room->roomCategory->kost->name : '-',
                 'payment_scheme' => $bill->payment_scheme,
                 'dp_amount' => (float) $bill->dp_amount,
+                'renewal' => (bool) $bill->renewal,
                 'transactions' => $bill->transactions->map(fn($t) => [
                     'id' => $t->id,
                     'order_id' => $t->order_id,

@@ -24,6 +24,7 @@ class SignatureController extends Controller
         $bills = Bill::with(['room.roomCategory.kost', 'tenant'])
             ->whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->whereNull('signature')
+            ->where(fn($q) => $q->whereNull('renewal')->orWhere('renewal', false))
             ->latest()
             ->paginate(15)
             ->through(fn(Bill $bill) => [

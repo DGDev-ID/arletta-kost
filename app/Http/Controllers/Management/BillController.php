@@ -28,6 +28,8 @@ class BillController extends Controller
             'payment_scheme'  => 'required|in:full_pay,dp',
             'promo_code'      => 'nullable|string|max:50',
             'person'          => 'nullable|integer|min:1',
+            'payment_type'    => 'nullable|in:manual,midtrans,debit',
+            'renewal'         => 'nullable|boolean',
         ]);
 
         // Resolve person charge if pricing is given
@@ -42,6 +44,7 @@ class BillController extends Controller
         }
 
         $validated['status'] = 'unpaid';
+        $validated['renewal'] = $request->boolean('renewal', false);
 
         // Apply promo if provided
         $promo = null;
@@ -69,12 +72,14 @@ class BillController extends Controller
         }
 
         // Remove fields not in bills table
+        $paymentType = $validated['payment_type'] ?? 'manual';
         unset($validated['promo_code']);
         unset($validated['room_pricing_id']);
         unset($validated['person']);
+        unset($validated['payment_type']);
 
 
-        DB::transaction(function () use ($validated, $promo, $chargePerson, $personCount) {
+        DB::transaction(function () use ($validated, $promo, $chargePerson, $personCount, $paymentType) {
             $bill = Bill::create($validated);
 
             $extra = [];
@@ -83,7 +88,7 @@ class BillController extends Controller
                 $extra['charge_person_fee'] = $chargePerson;
             }
 
-            $transaction = TransactionService::makeTransaction($bill, 'manual', $extra);
+            $transaction = TransactionService::makeTransaction($bill, $paymentType, $extra);
 
             // Attach the room to the tenant (if not already attached)
             $tenant = \App\Models\Tenant::find($validated['tenant_id']);
