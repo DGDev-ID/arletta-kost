@@ -1014,9 +1014,9 @@ const allBills = computed(() => props.bills);
                             v-model="billForm.payment_type"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
-                            <option value="manual">Manual (Transfer / Tunai)</option>
+                            <option value="manual">Manual (Tunai)</option>
                             <option value="debit">Debit</option>
-                            <option value="midtrans">QRIS (Midtrans)</option>
+                            <!-- <option value="midtrans">QRIS (Midtrans)</option> -->
                         </select>
                     </div>
 
