@@ -191,67 +191,9 @@ class TransactionController extends Controller
             ->latest()
             ->get();
 
-        $filename = 'transactions-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'Transaksi_Arletta_Kost_' . now()->format('Ymd_His') . '.xlsx';
 
-        $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
-        ];
-
-        $callback = function () use ($transactions) {
-            $handle = fopen('php://output', 'w');
-
-            // UTF-8 BOM agar Excel terbaca dengan benar
-            fwrite($handle, "\xEF\xBB\xBF");
-
-            // Header row
-            fputcsv($handle, [
-                'Order ID',
-                'Tenant',
-                'Room',
-                'Metode Pembayaran',
-                'Tipe Transaksi',
-                'Total (Rp)',
-                'Status',
-                'Tanggal Check-in',
-                'Tanggal Transaksi',
-            ]);
-
-            foreach ($transactions as $trx) {
-                $paymentLabel = match ($trx->payment_type) {
-                    'manual'   => 'Manual',
-                    'midtrans' => $trx->midtrans_method ? strtoupper($trx->midtrans_method) : 'Midtrans',
-                    'debit'    => 'Debit',
-                    default    => $trx->payment_type,
-                };
-
-                $txType = match ($trx->transaction_type) {
-                    'full_payment'     => 'Full Payment',
-                    'down_payment'     => 'Down Payment',
-                    'finished_payment' => 'Pelunasan',
-                    default            => $trx->transaction_type ?? 'Full Payment',
-                };
-
-                fputcsv($handle, [
-                    $trx->order_id,
-                    $trx->bill?->tenant?->name ?? '-',
-                    $trx->bill?->room?->room_number ?? '-',
-                    $paymentLabel,
-                    $txType,
-                    (int) $trx->total_price,
-                    $trx->status,
-                    $trx->bill?->start_date?->format('d-m-Y') ?? '-',
-                    $trx->created_at->format('d-m-Y H:i'),
-                ]);
-            }
-
-            fclose($handle);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TransactionExport($transactions), $filename);
     }
 
     public function refund(Request $request, Transaction $transaction): RedirectResponse
