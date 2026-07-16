@@ -191,9 +191,87 @@ class TransactionController extends Controller
             ->latest()
             ->get();
 
-        $filename = 'Transaksi_Arletta_Kost_' . now()->format('Ymd_His') . '.xlsx';
+        $filename = 'Transaksi-' . now()->format('Ymd-His') . '.xls';
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TransactionExport($transactions), $filename);
+        $headers = [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        $callback = function () use ($transactions) {
+            $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            $html .= '<head><meta charset="utf-8">';
+            $html .= '<style>';
+            $html .= 'table { border-collapse: collapse; width: 100%; font-family: sans-serif; }';
+            $html .= 'th { background-color: #2563eb; color: #ffffff; border: 1px solid #e5e7eb; padding: 10px; text-align: center; font-weight: bold; }';
+            $html .= 'td { border: 1px solid #e5e7eb; padding: 8px; vertical-align: top; }';
+            $html .= 'tr:nth-child(even) td { background-color: #f8fafc; }';
+            $html .= 'h2 { font-family: sans-serif; color: #1e293b; margin-bottom: 20px; }';
+            $html .= '</style>';
+            $html .= '</head><body>';
+            
+            $html .= '<h2>Laporan Transaksi Arletta Kost</h2>';
+            $html .= '<table>';
+            $html .= '<thead><tr>';
+            $html .= '<th>No</th>';
+            $html .= '<th>Order ID</th>';
+            $html .= '<th>Tenant</th>';
+            $html .= '<th>Room</th>';
+            $html .= '<th>Metode Pembayaran</th>';
+            $html .= '<th>Tipe Transaksi</th>';
+            $html .= '<th>Total (Rp)</th>';
+            $html .= '<th>Status</th>';
+            $html .= '<th>Tanggal Check-in</th>';
+            $html .= '<th>Tanggal Transaksi</th>';
+            $html .= '</tr></thead><tbody>';
+
+            $no = 1;
+            foreach ($transactions as $trx) {
+                $paymentLabel = match ($trx->payment_type) {
+                    'manual'   => 'Manual',
+                    'midtrans' => $trx->midtrans_method ? strtoupper($trx->midtrans_method) : 'Midtrans',
+                    'debit'    => 'Debit',
+                    default    => $trx->payment_type,
+                };
+
+                $txType = match ($trx->transaction_type) {
+                    'full_payment'     => 'Full Payment',
+                    'down_payment'     => 'Down Payment',
+                    'finished_payment' => 'Pelunasan',
+                    default            => $trx->transaction_type ?? 'Full Payment',
+                };
+
+                $total = number_format((int) $trx->total_price, 0, ',', '.');
+                $status = ucfirst($trx->status);
+                $checkin = $trx->bill?->start_date?->format('d-m-Y') ?? '-';
+                $trxDate = $trx->created_at->format('d-m-Y H:i');
+                $tenant = $trx->bill?->tenant?->name ?? '-';
+                $room = $trx->bill?->room?->room_number ?? '-';
+
+                $html .= '<tr>';
+                $html .= "<td style='text-align:center;'>{$no}</td>";
+                $html .= "<td>{$trx->order_id}</td>";
+                $html .= "<td>{$tenant}</td>";
+                $html .= "<td style='text-align:center;'>{$room}</td>";
+                $html .= "<td style='text-align:center;'>{$paymentLabel}</td>";
+                $html .= "<td style='text-align:center;'>{$txType}</td>";
+                $html .= "<td style='text-align:right;'>{$total}</td>";
+                $html .= "<td style='text-align:center;'>{$status}</td>";
+                $html .= "<td style='text-align:center;'>{$checkin}</td>";
+                $html .= "<td style='text-align:center;'>{$trxDate}</td>";
+                $html .= '</tr>';
+                $no++;
+            }
+
+            $html .= '</tbody></table></body></html>';
+
+            echo $html;
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     public function refund(Request $request, Transaction $transaction): RedirectResponse
