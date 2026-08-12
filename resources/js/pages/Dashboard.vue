@@ -143,20 +143,29 @@ const occupancyStrokeDashoffset = circleCircumference - (props.stats.occupancy_r
             <div class="grid gap-4 lg:grid-cols-3">
                 
                 <div class="lg:col-span-2 rounded-xl border bg-background p-5 shadow-sm flex flex-col">
-                    <h3 class="font-semibold text-sm mb-6">Revenue 7 Hari Terakhir</h3>
-                    <div class="flex-1 flex items-end justify-between gap-2 h-48 mt-auto pt-4 border-b">
+                    <h3 class="font-semibold text-sm mb-4">Revenue 7 Hari Terakhir</h3>
+                    <!-- Chart area: 160px tinggi, flex-end agar bar tumbuh dari bawah -->
+                    <div class="relative flex items-end justify-between gap-1 border-b border-border" style="height: 160px;">
                         <div v-for="(item, index) in chartData" :key="index" class="relative group flex flex-col items-center flex-1">
-                            <div class="absolute -top-8 bg-zinc-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                            <!-- Tooltip muncul saat hover -->
+                            <div class="absolute -top-9 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-xs py-1 px-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none shadow-lg">
                                 {{ item.label }}
                             </div>
-                            <div 
-                                class="w-full max-w-[40px] bg-slate-200 dark:bg-slate-800 rounded-t-sm transition-all duration-300 group-hover:bg-slate-800 dark:group-hover:bg-slate-300"
-                                :style="{ height: `${Math.max(item.value, 2)}%` }"
+                            <!-- Bar: tinggi dalam pixel (160px = 100%) -->
+                            <div
+                                class="w-full max-w-[36px] rounded-t-md transition-all duration-500 ease-out group-hover:opacity-80"
+                                :class="item.raw_value > 0 ? 'bg-slate-800 dark:bg-slate-200' : 'bg-slate-100 dark:bg-slate-800'"
+                                :style="{ height: `${Math.max(item.value, 2) * 1.6}px` }"
                             ></div>
-                            <span class="text-[10px] text-muted-foreground mt-2 absolute -bottom-6 whitespace-nowrap">{{ item.day }}</span>
                         </div>
                     </div>
-                    <div class="h-6"></div> </div>
+                    <!-- Label tanggal di bawah -->
+                    <div class="flex justify-between gap-1 mt-2 px-0">
+                        <div v-for="(item, index) in chartData" :key="'label-' + index" class="flex-1 flex items-center justify-center">
+                            <span class="text-[10px] text-muted-foreground whitespace-nowrap">{{ item.day }}</span>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="rounded-xl border bg-background p-5 shadow-sm flex flex-col items-center justify-center">
                     <h3 class="font-semibold text-sm self-start w-full mb-4">Occupancy Kamar</h3>
