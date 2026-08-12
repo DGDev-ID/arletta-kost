@@ -54,31 +54,42 @@ class DashboardController extends Controller
         $totalTransactions = Transaction::count();
 
         // ── 7-Day Revenue Chart ─────────────────────────────────
+        // Gunakan Bill (bukan Transaction) sebagai sumber data — konsisten dengan perhitungan total_revenue di atas.
+        // Bill diupdate saat pembayaran berhasil (status berubah ke paid/down_payment/finished_payment).
         $chartData = collect();
         $maxRevenue = 0;
 
-        // Ambil semua transaksi sukses dari 8 hari ke belakang untuk mengantisipasi selisih zona waktu
-        $recentTransactions = Transaction::where('status', 'success')
+        // Ambil semua bill yang sudah lunas dalam 8 hari ke belakang (lebih lebar untuk antisipasi selisih timezone)
+        $recentPaidBills = Bill::whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->where('updated_at', '>=', Carbon::now()->subDays(8))
-            ->get(['updated_at', 'total_price']);
+            ->get(['updated_at', 'total_price', 'dp_amount', 'status']);
 
         for ($i = 6; $i >= 0; $i--) {
-            // Tentukan tanggal yang sedang dihitung dalam zona waktu WIB
             $date = Carbon::today('Asia/Jakarta')->subDays($i);
             $dayString = $date->format('Y-m-d');
-            
-            // Filter koleksi transaksi berdasarkan format tanggal WIB dari updated_at
-            $dailyRevenue = (float) $recentTransactions->filter(function ($trx) use ($dayString) {
-                return $trx->updated_at->timezone('Asia/Jakarta')->format('Y-m-d') === $dayString;
-            })->sum('total_price');
+
+            // Filter bills berdasarkan tanggal lokal WIB dari updated_at
+            $dailyBills = $recentPaidBills->filter(function ($bill) use ($dayString) {
+                return $bill->updated_at->timezone('Asia/Jakarta')->format('Y-m-d') === $dayString;
+            });
+
+            // Hitung revenue: paid & finished_payment pakai total_price, down_payment pakai dp_amount
+            $dailyRevenue = 0.0;
+            foreach ($dailyBills as $bill) {
+                if ($bill->status === 'down_payment') {
+                    $dailyRevenue += (float) $bill->dp_amount;
+                } else {
+                    $dailyRevenue += (float) $bill->total_price;
+                }
+            }
 
             $chartData->push([
                 'day'       => $date->translatedFormat('d M'),
-                'value'     => 0, // Akan dihitung persentasenya
+                'value'     => 0,
                 'raw_value' => $dailyRevenue,
                 'label'     => 'Rp ' . number_format($dailyRevenue, 0, ',', '.')
             ]);
-            
+
             if ($dailyRevenue > $maxRevenue) {
                 $maxRevenue = $dailyRevenue;
             }
