@@ -38,7 +38,7 @@ class TransactionController extends Controller
                 'transaction_type' => $trx->transaction_type,
                 'total_price' => (float) $trx->total_price,
                 'status' => $trx->status,
-                'created_at' => $trx->created_at->format('d-m-Y H:i'),
+                'created_at' => $trx->created_at->timezone('Asia/Jakarta')->format('d-m-Y H:i'),
                 'checkin_date' => $trx->bill?->start_date?->format('d-m-Y') ?? '-',
             ]);
 
@@ -66,7 +66,7 @@ class TransactionController extends Controller
             'total_price' => (float) $transaction->total_price,
             'status' => $transaction->status,
             'snap_token' => $transaction->snap_token,
-            'created_at' => $transaction->created_at->format('d-m-Y H:i'),
+            'created_at' => $transaction->created_at->timezone('Asia/Jakarta')->format('d-m-Y H:i'),
         ];
 
         $tenant = [
@@ -94,7 +94,7 @@ class TransactionController extends Controller
             ->map(fn ($d) => [
                 'id' => $d->id,
                 'status' => $d->status,
-                'created_at' => $d->created_at->format('d-m-Y H:i'),
+                'created_at' => $d->created_at->timezone('Asia/Jakarta')->format('d-m-Y H:i'),
             ]);
 
         $refunds = TransactionRefund::where('bill_id', $transaction->bill_id)
@@ -104,7 +104,7 @@ class TransactionController extends Controller
                 'id' => $r->id,
                 'amount' => (float) $r->amount,
                 'remark' => $r->remark,
-                'created_at' => $r->created_at->format('d-m-Y H:i'),
+                'created_at' => $r->created_at->timezone('Asia/Jakarta')->format('d-m-Y H:i'),
             ]);
 
         return Inertia::render('Transactions/Show', [
@@ -135,7 +135,7 @@ class TransactionController extends Controller
                 'total_price'      => (float) $transaction->total_price,
                 'total_price_formatted' => $formatRupiah($transaction->total_price),
                 'status'           => $transaction->status,
-                'created_at'       => $transaction->created_at->format('d M Y, H:i'),
+                'created_at'       => $transaction->created_at->timezone('Asia/Jakarta')->format('d M Y, H:i'),
             ],
             'tenant' => [
                 'name'         => $transaction->bill->tenant->name ?? '-',
@@ -247,7 +247,7 @@ class TransactionController extends Controller
                 $total = number_format((int) $trx->total_price, 0, ',', '.');
                 $status = ucfirst($trx->status);
                 $checkin = $trx->bill?->start_date?->format('d-m-Y') ?? '-';
-                $trxDate = $trx->created_at->format('d-m-Y H:i');
+                $trxDate = $trx->created_at->timezone('Asia/Jakarta')->format('d-m-Y H:i');
                 $tenant = $trx->bill?->tenant?->name ?? '-';
                 $room = $trx->bill?->room?->room_number ?? '-';
 
