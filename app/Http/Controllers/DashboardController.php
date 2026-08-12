@@ -57,15 +57,20 @@ class DashboardController extends Controller
         $chartData = collect();
         $maxRevenue = 0;
         for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i);
+            // Dapatkan awal dan akhir hari berdasarkan zona waktu lokal (WIB)
+            $startOfDay = Carbon::today('Asia/Jakarta')->subDays($i);
+            $endOfDay = $startOfDay->copy()->endOfDay();
             
-            // Sum successful transactions for that day
+            // Jumlahkan transaksi 'success' dengan mengkonversi rentang waktu lokal ke UTC untuk query database
             $dailyRevenue = (float) Transaction::where('status', 'success')
-                ->whereDate('updated_at', $date)
+                ->whereBetween('updated_at', [
+                    $startOfDay->copy()->timezone('UTC'),
+                    $endOfDay->copy()->timezone('UTC')
+                ])
                 ->sum('total_price');
 
             $chartData->push([
-                'day'       => $date->translatedFormat('d M'),
+                'day'       => $startOfDay->translatedFormat('d M'),
                 'value'     => 0, // Akan dihitung persentasenya
                 'raw_value' => $dailyRevenue,
                 'label'     => 'Rp ' . number_format($dailyRevenue, 0, ',', '.')
