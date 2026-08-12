@@ -43,7 +43,7 @@ class DashboardController extends Controller
         $paidBills         = Bill::whereIn('status', ['paid', 'down_payment', 'finished_payment'])->count();
         $pendingSignatures = Bill::whereIn('status', ['paid', 'down_payment', 'finished_payment'])
             ->whereNull('signature')
-            ->whereDate('start_date', '<=', $today)
+            ->where(fn($q) => $q->whereNull('renewal')->orWhere('renewal', false))
             ->count();
         $refundRequests    = Bill::where('status', 'refund_request')->count();
 
