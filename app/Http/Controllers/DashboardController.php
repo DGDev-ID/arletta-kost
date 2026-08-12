@@ -56,21 +56,24 @@ class DashboardController extends Controller
         // ── 7-Day Revenue Chart ─────────────────────────────────
         $chartData = collect();
         $maxRevenue = 0;
+
+        // Ambil semua transaksi sukses dari 8 hari ke belakang untuk mengantisipasi selisih zona waktu
+        $recentTransactions = Transaction::where('status', 'success')
+            ->where('updated_at', '>=', Carbon::now()->subDays(8))
+            ->get(['updated_at', 'total_price']);
+
         for ($i = 6; $i >= 0; $i--) {
-            // Dapatkan awal dan akhir hari berdasarkan zona waktu lokal (WIB)
-            $startOfDay = Carbon::today('Asia/Jakarta')->subDays($i);
-            $endOfDay = $startOfDay->copy()->endOfDay();
+            // Tentukan tanggal yang sedang dihitung dalam zona waktu WIB
+            $date = Carbon::today('Asia/Jakarta')->subDays($i);
+            $dayString = $date->format('Y-m-d');
             
-            // Jumlahkan transaksi 'success' dengan mengkonversi rentang waktu lokal ke UTC untuk query database
-            $dailyRevenue = (float) Transaction::where('status', 'success')
-                ->whereBetween('updated_at', [
-                    $startOfDay->copy()->timezone('UTC'),
-                    $endOfDay->copy()->timezone('UTC')
-                ])
-                ->sum('total_price');
+            // Filter koleksi transaksi berdasarkan format tanggal WIB dari updated_at
+            $dailyRevenue = (float) $recentTransactions->filter(function ($trx) use ($dayString) {
+                return $trx->updated_at->timezone('Asia/Jakarta')->format('Y-m-d') === $dayString;
+            })->sum('total_price');
 
             $chartData->push([
-                'day'       => $startOfDay->translatedFormat('d M'),
+                'day'       => $date->translatedFormat('d M'),
                 'value'     => 0, // Akan dihitung persentasenya
                 'raw_value' => $dailyRevenue,
                 'label'     => 'Rp ' . number_format($dailyRevenue, 0, ',', '.')
