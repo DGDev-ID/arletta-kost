@@ -53,6 +53,7 @@ interface RecentBill {
 
 const props = defineProps<{
     stats: Stats;
+    chartData: { day: string; value: number; raw_value: number; label: string }[];
     recentBills: RecentBill[];
 }>();
 
@@ -73,17 +74,6 @@ const statusBadge = (status: string) => {
     };
     return map[status] ?? 'bg-gray-100 text-gray-700';
 };
-
-// Data dummy untuk grafik chart (Bisa diganti dengan data dari props/backend nantinya)
-const dummyChartData = [
-    { day: '23 Apr', value: 30, label: '300rb' },
-    { day: '24 Apr', value: 45, label: '450rb' },
-    { day: '25 Apr', value: 25, label: '250rb' },
-    { day: '26 Apr', value: 60, label: '600rb' },
-    { day: '27 Apr', value: 80, label: '800rb' },
-    { day: '28 Apr', value: 50, label: '500rb' },
-    { day: '29 Apr', value: 100, label: '1jt' },
-];
 
 // Kalkulasi untuk Radial Chart (Circle)
 const circleRadius = 36;
@@ -107,9 +97,6 @@ const occupancyStrokeDashoffset = circleCircumference - (props.stats.occupancy_r
                     </div>
                     <div>
                         <p class="text-2xl font-bold tracking-tight">{{ formatCurrency(stats.total_revenue) }}</p>
-                        <p class="text-xs text-muted-foreground mt-1 text-green-600 dark:text-green-400 flex items-center">
-                            <TrendingUp class="w-3 h-3 mr-1"/> +12.5% vs bulan lalu
-                        </p>
                     </div>
                 </div>
 
@@ -158,15 +145,15 @@ const occupancyStrokeDashoffset = circleCircumference - (props.stats.occupancy_r
                 <div class="lg:col-span-2 rounded-xl border bg-background p-5 shadow-sm flex flex-col">
                     <h3 class="font-semibold text-sm mb-6">Revenue 7 Hari Terakhir</h3>
                     <div class="flex-1 flex items-end justify-between gap-2 h-48 mt-auto pt-4 border-b">
-                        <div v-for="(item, index) in dummyChartData" :key="index" class="relative group flex flex-col items-center flex-1">
-                            <div class="absolute -top-8 bg-zinc-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div v-for="(item, index) in chartData" :key="index" class="relative group flex flex-col items-center flex-1">
+                            <div class="absolute -top-8 bg-zinc-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
                                 {{ item.label }}
                             </div>
                             <div 
                                 class="w-full max-w-[40px] bg-slate-200 dark:bg-slate-800 rounded-t-sm transition-all duration-300 group-hover:bg-slate-800 dark:group-hover:bg-slate-300"
-                                :style="{ height: `${item.value}%` }"
+                                :style="{ height: `${Math.max(item.value, 2)}%` }"
                             ></div>
-                            <span class="text-[10px] text-muted-foreground mt-2 absolute -bottom-6">{{ item.day }}</span>
+                            <span class="text-[10px] text-muted-foreground mt-2 absolute -bottom-6 whitespace-nowrap">{{ item.day }}</span>
                         </div>
                     </div>
                     <div class="h-6"></div> </div>

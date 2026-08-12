@@ -24,10 +24,12 @@ class DashboardController extends Controller
         $totalRoomCategories = RoomCategory::count();
         $totalRooms          = Room::count();
 
-        // ── Room Status ─────────────────────────────────────────
-        $availableRooms   = Room::where('status', 'available')->count();
-        $occupiedRooms    = Room::where('status', 'occupied')->count();
         $maintenanceRooms = Room::where('status', 'maintenance')->count();
+
+        $occupiedRooms = Room::whereHas('tenants')->where('status', '!=', 'maintenance')->count();
+
+        $availableRooms = Room::where('status', '!=', 'maintenance')->count() - $occupiedRooms;
+
         $occupancyRate    = $totalRooms > 0
             ? round(($occupiedRooms / $totalRooms) * 100, 1)
             : 0;
@@ -50,6 +52,35 @@ class DashboardController extends Controller
 
         // ── Transactions ────────────────────────────────────────
         $totalTransactions = Transaction::count();
+
+        // ── 7-Day Revenue Chart ─────────────────────────────────
+        $chartData = collect();
+        $maxRevenue = 0;
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            
+            // Sum successful transactions for that day
+            $dailyRevenue = (float) Transaction::where('status', 'success')
+                ->whereDate('updated_at', $date)
+                ->sum('total_price');
+
+            $chartData->push([
+                'day'       => $date->translatedFormat('d M'),
+                'value'     => 0, // Akan dihitung persentasenya
+                'raw_value' => $dailyRevenue,
+                'label'     => 'Rp ' . number_format($dailyRevenue, 0, ',', '.')
+            ]);
+            
+            if ($dailyRevenue > $maxRevenue) {
+                $maxRevenue = $dailyRevenue;
+            }
+        }
+
+        // Kalkulasi persentase tinggi balok (bar height) 0-100%
+        $chartData->transform(function ($item) use ($maxRevenue) {
+            $item['value'] = $maxRevenue > 0 ? round(($item['raw_value'] / $maxRevenue) * 100) : 0;
+            return $item;
+        });
 
         // ── Recent Bills (last 6) ──────────────────────────────
         $recentBills = Bill::with(['tenant', 'room.roomCategory.kost'])
@@ -86,6 +117,7 @@ class DashboardController extends Controller
                 'pending_revenue'       => $pendingRevenue,
                 'total_transactions'    => $totalTransactions,
             ],
+            'chartData'   => $chartData->toArray(),
             'recentBills' => $recentBills,
         ]);
     }
