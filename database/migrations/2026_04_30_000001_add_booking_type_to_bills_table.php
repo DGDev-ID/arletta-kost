@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bills', function (Blueprint $table) {
-            $table->enum('booking_type', ['monthly', 'daily'])->default('monthly')->after('payment_scheme');
+            $table->enum('booking_type', ['monthly', 'daily'])->default('monthly');
         });
     }
 

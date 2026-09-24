@@ -6,17 +6,19 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Fix: extend payment_type ENUM to include 'debit' using MySQL syntax.
-     * The previous migration used PostgreSQL CHECK constraint syntax
-     * which had no effect on MySQL.
+     * Fix: extend payment_type to include 'debit'.
+     * PostgreSQL uses CHECK constraints for ENUM-like behaviour.
+     * This migration is a no-op on PostgreSQL because
+     * 2026_07_15_194912 already handles it via CHECK constraint.
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE transactions MODIFY COLUMN payment_type ENUM('manual', 'midtrans', 'debit') NOT NULL");
+        // Already handled by 2026_07_15_194912 for PostgreSQL.
+        // No additional action needed.
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE transactions MODIFY COLUMN payment_type ENUM('manual', 'midtrans') NOT NULL");
+        // Already handled by 2026_07_15_194912 for PostgreSQL.
     }
 };

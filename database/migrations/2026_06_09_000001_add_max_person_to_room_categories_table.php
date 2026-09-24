@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('room_categories', function (Blueprint $table) {
-            $table->integer('max_person')->default(2)->after('gender');
+            $table->integer('max_person')->default(2);
         });
     }
 

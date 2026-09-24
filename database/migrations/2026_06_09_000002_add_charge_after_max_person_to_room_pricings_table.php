@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('room_pricings', function (Blueprint $table) {
-            $table->decimal('charge_after_max_person', 15, 2)->default(100000)->after('price');
+            $table->decimal('charge_after_max_person', 15, 2)->default(100000);
         });
     }
 

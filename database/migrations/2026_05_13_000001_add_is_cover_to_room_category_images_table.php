@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('room_category_images', function (Blueprint $table) {
-            $table->boolean('is_cover')->default(false)->after('img_url');
+            $table->boolean('is_cover')->default(false);
         });
     }
 

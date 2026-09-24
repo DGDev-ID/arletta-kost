@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('room_categories', function (Blueprint $table) {
             // Gender indicates intended occupant: male, female, or mixed
-            $table->enum('gender', ['male', 'female', 'mixed'])->nullable()->default('mixed')->after('description');
+            $table->enum('gender', ['male', 'female', 'mixed'])->nullable()->default('mixed');
         });
     }
 

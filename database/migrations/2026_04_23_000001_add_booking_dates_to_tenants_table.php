@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tenants', function (Blueprint $table) {
-            $table->date('start_date')->nullable()->after('phone_number');
-            $table->date('end_date')->nullable()->after('start_date');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
         });
     }
 

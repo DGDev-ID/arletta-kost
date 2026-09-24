@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('room_pricing_promos', function (Blueprint $table) {
-            $table->decimal('value', 15, 2)->default(0)->after('type');
+            $table->decimal('value', 15, 2)->default(0);
         });
     }
 
