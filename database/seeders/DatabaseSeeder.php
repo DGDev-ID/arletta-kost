@@ -13,12 +13,12 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             KostSeeder::class,
             RoomCategorySeeder::class,
-            RoomSeeder::class,
-            TenantSeeder::class,
-            BillSeeder::class,
-            TransactionSeeder::class,
+            // RoomSeeder::class,
+            // TenantSeeder::class,
+            // BillSeeder::class,
+            // TransactionSeeder::class,
             MidtransConfigSeeder::class,
-            RoomPricingPromoSeeder::class,
+            // RoomPricingPromoSeeder::class,
         ]);
     }
 }
