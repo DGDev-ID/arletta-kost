@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Management\BackupDatabaseController;
 use App\Http\Controllers\Management\BillController;
 use App\Http\Controllers\Management\TenantController;
 use App\Http\Controllers\Management\UserController;
@@ -54,6 +55,11 @@ Route::middleware(['auth', 'verified'])->prefix('management')->name('management.
     
     Route::get('checkouts', [CheckoutController::class, 'index'])->name('checkouts.index');
     Route::post('checkouts/{tenant}/room/{room}', [CheckoutController::class, 'process'])->name('checkouts.process');
+
+    Route::get('backup-databases', [BackupDatabaseController::class, 'index'])->name('backup-databases.index');
+    Route::post('backup-databases', [BackupDatabaseController::class, 'store'])->name('backup-databases.store');
+    Route::delete('backup-databases/{backupDatabase}', [BackupDatabaseController::class, 'destroy'])->name('backup-databases.destroy');
+    Route::get('backup-databases/{backupDatabase}/download', [BackupDatabaseController::class, 'download'])->name('backup-databases.download');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('transactions')->name('transactions.')->group(function () {

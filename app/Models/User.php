@@ -56,4 +56,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(ActivityLog::class);
     }
+
+    public function isSuperadmin(): bool
+    {
+        return $this->roles->contains('name', 'superadmin');
+    }
 }

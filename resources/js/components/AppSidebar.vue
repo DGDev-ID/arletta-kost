@@ -3,10 +3,23 @@ import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { BedDouble, Building, FolderTree, LayoutGrid, Shield, Tag, Users, Wallet, FileSignature, HandCoins, Receipt, LogOut } from 'lucide-vue-next';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/vue3';
+import { BedDouble, Building, Database, FolderTree, LayoutGrid, Shield, Tag, Users, Wallet, FileSignature, HandCoins, Receipt, LogOut } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import { computed } from 'vue';
+
+const page = usePage<SharedData>();
+
+const isSuperadmin = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    if (user.is_superadmin) return true;
+    if (Array.isArray(user.roles)) {
+        return user.roles.includes('superadmin');
+    }
+    return true;
+});
 
 const mainNavItems: NavItem[] = [
     {
@@ -80,6 +93,14 @@ const transactionNavItems: NavItem[] = [
         icon: FileSignature,
     },
 ];
+
+const systemNavItems: NavItem[] = [
+    {
+        title: 'Backup Database',
+        href: '/management/backup-databases',
+        icon: Database,
+    },
+];
 </script>
 
 <template>
@@ -101,6 +122,7 @@ const transactionNavItems: NavItem[] = [
             <NavMain :items="masterNavItems" label="Master Data" />
             <NavMain :items="managementNavItems" label="Management" />
             <NavMain :items="transactionNavItems" label="Transactions" />
+            <NavMain v-if="isSuperadmin" :items="systemNavItems" label="System" />
         </SidebarContent>
 
         <SidebarFooter>
